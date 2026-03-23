@@ -1,8 +1,40 @@
 import 'package:flutter/material.dart';
+import 'package:pie/services/location_service.dart';
+import 'package:pie/screens/hotel_list_screen.dart';
+import 'banner_view.dart';
+import 'guest_screen.dart';
+import 'calendar_screen.dart';
 
 // ---------------- HOME SCREEN ----------------
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+
+  List<dynamic> locations = [];
+  String selectedLocation = "Puri, Odisha, India";
+
+  final TextEditingController controller = TextEditingController();
+
+  // ✅ Recent searches list
+  List<String> recentSearches = [];
+
+  // ✅ Guest + Date state
+  int rooms = 1;
+  int adults = 2;
+  int children = 0;
+
+  DateTimeRange selectedDates = DateTimeRange(
+    start: DateTime.now(),
+    end: DateTime.now().add(const Duration(days: 1)),
+  );
+
+  // ✅ Bank coupon copy state
+  Map<String, bool> copiedMap = {};
 
   @override
   Widget build(BuildContext context) {
@@ -51,8 +83,93 @@ class HomeScreen extends StatelessWidget {
 
               SizedBox(height: size.height * 0.05),
 
+              // ✅ RECENT SEARCHES
               _sectionTitle("Recent Searches", size),
-              _horizontalList(size, 0.14),
+
+              recentSearches.isEmpty
+                  ? const Text("No recent searches")
+                  : SizedBox(
+                height: size.height * 0.20,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: recentSearches.length,
+                  itemBuilder: (context, index) {
+                    final location = recentSearches[index];
+
+                    return GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          controller.text = location;
+                          selectedLocation = location;
+                        });
+                      },
+                      child: Container(
+                        width: size.width * 0.55,
+                        margin: EdgeInsets.only(right: size.width * 0.04),
+                        padding: EdgeInsets.all(size.width * 0.04),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          color: Colors.white,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black12,
+                              blurRadius: 6,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green,
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: const Text(
+                                    "City",
+                                    style: TextStyle(
+                                        color: Colors.white, fontSize: 12),
+                                  ),
+                                ),
+                                const Icon(Icons.arrow_forward_ios, size: 14),
+                              ],
+                            ),
+
+                            SizedBox(height: size.height * 0.015),
+
+                            Text(
+                              location.split(',').first,
+                              style: TextStyle(
+                                fontSize: size.width * 0.045,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+
+                            const Spacer(),
+
+                            Text(
+                              "$adults Adults",
+                              style: const TextStyle(color: Colors.grey),
+                            ),
+
+                            Text(
+                              "${selectedDates.start.day}/${selectedDates.start.month} - ${selectedDates.end.day}/${selectedDates.end.month}",
+                              style: const TextStyle(color: Colors.grey),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
 
               SizedBox(height: size.height * 0.03),
 
@@ -61,21 +178,9 @@ class HomeScreen extends StatelessWidget {
 
               SizedBox(height: size.height * 0.03),
 
+              // ✅ BANK COUPONS SECTION (Same as screenshot)
               _sectionTitle("Coupons", size),
-              Container(
-                width: double.infinity,
-                height: size.height * 0.12,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  color: Colors.orange.shade200,
-                ),
-                child: const Center(
-                  child: Text(
-                    "Get 20% OFF on your first booking!",
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ),
+              _bankCouponsSection(size),
 
               SizedBox(height: size.height * 0.03),
 
@@ -100,51 +205,190 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _searchSection(BuildContext context, Size size) {
-    DateTimeRange? selectedDates;
+  // ---------------- BANK COUPONS SECTION ----------------
 
+  Widget _bankCouponsSection(Size size) {
+    final List<Map<String, dynamic>> coupons = [
+      {
+        'logo': Icons.credit_card,
+        'logoColor': const Color(0xFFCC2027), // ICICI red
+        'title': 'UPTO 25% OFF',
+        'subtitle': 'On ICICI Credit Cards EMI',
+        'code': 'ICICIEMI',
+        'bgColor': Colors.white,
+      },
+      {
+        'logo': Icons.credit_card,
+        'logoColor': const Color(0xFF97144D), // Axis maroon
+        'title': 'FLAT 12% OFF',
+        'subtitle': 'on Axis Bank Credit Cards EMI',
+        'code': 'GOAXISEMI',
+        'bgColor': Colors.white,
+      },
+      {
+        'logo': Icons.account_balance,
+        'logoColor': const Color(0xFF0057A8), // SBI blue
+        'title': 'FLAT 10% OFF',
+        'subtitle': 'On SBI Credit Cards',
+        'code': 'SBIDEAL10',
+        'bgColor': Colors.white,
+      },
+    ];
+
+    return SizedBox(
+      height: size.height * 0.22,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: coupons.length,
+        itemBuilder: (context, index) {
+          final coupon = coupons[index];
+          final code = coupon['code'] as String;
+          final isCopied = copiedMap[code] ?? false;
+
+          return Container(
+            width: size.width * 0.52,
+            margin: EdgeInsets.only(right: size.width * 0.04),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey.shade200),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.06),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+
+                // ---- TOP: Logo ----
+                Padding(
+                  padding: const EdgeInsets.only(top: 16, bottom: 8),
+                  child: Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: (coupon['logoColor'] as Color).withOpacity(0.1),
+                    ),
+                    child: Icon(
+                      coupon['logo'] as IconData,
+                      color: coupon['logoColor'] as Color,
+                      size: 26,
+                    ),
+                  ),
+                ),
+
+                // ---- Title ----
+                Text(
+                  coupon['title'] as String,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: size.width * 0.038,
+                    color: Colors.black87,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+
+                const SizedBox(height: 4),
+
+                // ---- Subtitle ----
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Text(
+                    coupon['subtitle'] as String,
+                    style: TextStyle(
+                      fontSize: size.width * 0.03,
+                      color: Colors.grey.shade600,
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                  ),
+                ),
+
+                const Spacer(),
+
+                // ---- Divider ----
+                Divider(color: Colors.grey.shade200, height: 1),
+
+                // ---- Coupon Code + Copy Button ----
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // Dashed border code box
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: Colors.grey.shade400,
+                            width: 1,
+                            style: BorderStyle.solid,
+                          ),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          code,
+                          style: TextStyle(
+                            fontSize: size.width * 0.028,
+                            color: Colors.black87,
+                            fontWeight: FontWeight.w500,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+
+                      // Copy Button
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            copiedMap[code] = true;
+                          });
+                          // Reset after 2 seconds
+                          Future.delayed(const Duration(seconds: 2), () {
+                            if (mounted) {
+                              setState(() {
+                                copiedMap[code] = false;
+                              });
+                            }
+                          });
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: isCopied ? Colors.green : Colors.blue.shade600,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            isCopied ? "Copied!" : "Copy",
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  // ---------------- SEARCH SECTION ----------------
+
+  Widget _searchSection(BuildContext context, Size size) {
     return Column(
       children: [
-
-        Container(
-          width: double.infinity,
-          padding: EdgeInsets.all(size.width * 0.04),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            color: Colors.grey.shade200,
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.orange.shade100,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Text(
-                  "HOURLY\nSTAYS",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
-                ),
-              ),
-              SizedBox(width: size.width * 0.04),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "BOOK FOR 3, 6 OR 9 HOURS!",
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    SizedBox(height: 4),
-                    Text("Flexible slots, great savings"),
-                  ],
-                ),
-              ),
-              const Icon(Icons.arrow_forward_ios, size: 16),
-            ],
-          ),
-        ),
 
         SizedBox(height: size.height * 0.02),
 
@@ -175,25 +419,52 @@ class HomeScreen extends StatelessWidget {
 
                   SizedBox(height: size.height * 0.01),
 
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Expanded(
-                        child: Text(
-                          "Puri, Odisha, India",
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                  TextField(
+                    controller: controller,
+                    onChanged: (value) async {
+                      final results =
+                      await LocationService.searchLocation(value);
+                      setState(() {
+                        locations = results;
+                      });
+                    },
+                    decoration: InputDecoration(
+                      hintText: selectedLocation,
+                      prefixIcon: const Icon(Icons.location_on),
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide.none,
                       ),
-                      OutlinedButton.icon(
-                        onPressed: () {},
-                        icon: const Icon(Icons.my_location),
-                        label: const Text("Near Me"),
-                      ),
-                    ],
+                    ),
                   ),
+
+                  if (locations.isNotEmpty)
+                    Container(
+                      margin: const EdgeInsets.only(top: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: locations.length,
+                        itemBuilder: (context, index) {
+                          final item = locations[index];
+                          return ListTile(
+                            title: Text(item['display_name']),
+                            onTap: () {
+                              setState(() {
+                                selectedLocation = item['display_name'];
+                                controller.text = selectedLocation;
+                                locations = [];
+                              });
+                            },
+                          );
+                        },
+                      ),
+                    ),
 
                   Divider(height: size.height * 0.03),
 
@@ -201,43 +472,56 @@ class HomeScreen extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
 
-                      // 👇 DATE PICKER ADDED
                       GestureDetector(
                         onTap: () async {
-                          final picked = await showDateRangePicker(
-                            context: context,
-                            firstDate: DateTime.now(),
-                            lastDate: DateTime(2100),
+                          final result = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => CalendarScreen(
+                                initialDates: selectedDates,
+                              ),
+                            ),
                           );
-                          if (picked != null) {
-                            selectedDates = picked;
+
+                          if (result != null) {
+                            setState(() {
+                              selectedDates = result;
+                            });
                           }
                         },
                         child: Text(
-                          selectedDates == null
-                              ? "Select Dates"
-                              : "${selectedDates!.start.day}/${selectedDates!.start.month} - ${selectedDates!.end.day}/${selectedDates!.end.month}",
+                          "${selectedDates.start.day}/${selectedDates.start.month} - ${selectedDates.end.day}/${selectedDates.end.month}",
                           style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
                       ),
 
                       GestureDetector(
-                        onTap: () {
-                          Navigator.push(
+                        onTap: () async {
+                          final result = await Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => const GuestScreen(),
+                              builder: (_) => GuestScreen(
+                                rooms: rooms,
+                                adults: adults,
+                                children: children,
+                              ),
                             ),
                           );
+
+                          if (result != null) {
+                            setState(() {
+                              rooms = result['rooms'];
+                              adults = result['adults'];
+                              children = result['children'];
+                            });
+                          }
                         },
-                        child: const Column(
+                        child: Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
-                            Text(
-                              "1 Room",
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            Text("2 Adults"),
+                            Text("$rooms Room",
+                                style: const TextStyle(fontWeight: FontWeight.bold)),
+                            Text("$adults Adults"),
                           ],
                         ),
                       ),
@@ -260,7 +544,27 @@ class HomeScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(30),
                     ),
                   ),
-                  onPressed: () {},
+                  onPressed: () {
+
+                    final searchLocation =
+                    controller.text.isEmpty ? selectedLocation : controller.text;
+
+                    // ✅ Add to recent searches
+                    if (!recentSearches.contains(searchLocation)) {
+                      recentSearches.insert(0, searchLocation);
+                    }
+
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => HotelListScreen(
+                          location: searchLocation,
+                        ),
+                      ),
+                    );
+
+                    setState(() {});
+                  },
                   child: const Text(
                     "Search",
                     style: TextStyle(color: Colors.white),
@@ -273,6 +577,8 @@ class HomeScreen extends StatelessWidget {
       ],
     );
   }
+
+  // ---------------- COMMON ----------------
 
   Widget _sectionTitle(String title, Size size) {
     return Padding(
@@ -306,108 +612,6 @@ class HomeScreen extends StatelessWidget {
             ),
           );
         },
-      ),
-    );
-  }
-}
-
-// ---------------- GUEST SCREEN ----------------
-
-class GuestScreen extends StatefulWidget {
-  const GuestScreen({super.key});
-
-  @override
-  State<GuestScreen> createState() => _GuestScreenState();
-}
-
-class _GuestScreenState extends State<GuestScreen> {
-  int rooms = 1;
-  int adults = 2;
-  int children = 0;
-
-  Widget counter(String title, int value, Function(bool) onChange) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(title),
-        Row(
-          children: [
-            IconButton(
-              onPressed: () => onChange(false),
-              icon: const Icon(Icons.remove),
-            ),
-            Text(value.toString()),
-            IconButton(
-              onPressed: () => onChange(true),
-              icon: const Icon(Icons.add),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-
-    return Scaffold(
-      appBar: AppBar(title: const Text("Select Guests")),
-      body: Padding(
-        padding: EdgeInsets.all(size.width * 0.05),
-        child: Column(
-          children: [
-
-            counter("Rooms", rooms, (isAdd) {
-              setState(() {
-                if (isAdd) {
-                  rooms++;
-                } else if (rooms > 1) {
-                  rooms--;
-                }
-              });
-            }),
-
-            counter("Adults", adults, (isAdd) {
-              setState(() {
-                if (isAdd) {
-                  adults++;
-                } else if (adults > 1) {
-                  adults--;
-                }
-              });
-            }),
-
-            counter("Children", children, (isAdd) {
-              setState(() {
-                if (isAdd) {
-                  children++;
-                } else if (children > 0) {
-                  children--;
-                }
-              });
-            }),
-
-            const Spacer(),
-
-            SizedBox(
-              width: double.infinity,
-              height: size.height * 0.07,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange,
-                ),
-                onPressed: () {
-                  Navigator.pop(context);
-                },
-                child: const Text(
-                  "Done",
-                  style: TextStyle(color: Colors.white),
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
