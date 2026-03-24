@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:pie/screens/introduction_screen.dart';
 import 'package:pie/screens/login_screen.dart';
+import 'package:pie/screens/phone_auth_screen.dart';
 import 'package:pie/screens/splash_screen.dart';
 import 'package:pie/screens/home_screen.dart';
 
@@ -18,7 +19,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       routes: {
         '/intro': (_) => const IntroScreen(),
-        '/login': (_) => const LoginScreen(),
+        '/login': (_) => const PhoneAuthScreen(),
         '/home': (_) => const HomeScreen(), // ✅ MUST BE PRESENT
       },
       home: const SplashScreen(),

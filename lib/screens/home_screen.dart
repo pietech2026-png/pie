@@ -20,10 +20,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   final TextEditingController controller = TextEditingController();
 
-  // ✅ Recent searches list
   List<String> recentSearches = [];
 
-  // ✅ Guest + Date state
   int rooms = 1;
   int adults = 2;
   int children = 0;
@@ -33,7 +31,6 @@ class _HomeScreenState extends State<HomeScreen> {
     end: DateTime.now().add(const Duration(days: 1)),
   );
 
-  // ✅ Bank coupon copy state
   Map<String, bool> copiedMap = {};
 
   @override
@@ -53,7 +50,7 @@ class _HomeScreenState extends State<HomeScreen> {
           children: const [
             Icon(Icons.hotel),
             SizedBox(width: 8),
-            Text("Pi Hotel"),
+            Text("Pie Hotel"),
           ],
         ),
         centerTitle: true,
@@ -83,7 +80,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
               SizedBox(height: size.height * 0.05),
 
-              // ✅ RECENT SEARCHES
               _sectionTitle("Recent Searches", size),
 
               recentSearches.isEmpty
@@ -154,10 +150,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
                             const Spacer(),
 
-                            Text(
-                              "$adults Adults",
-                              style: const TextStyle(color: Colors.grey),
-                            ),
+                            Text("$adults Adults",
+                                style: const TextStyle(color: Colors.grey)),
 
                             Text(
                               "${selectedDates.start.day}/${selectedDates.start.month} - ${selectedDates.end.day}/${selectedDates.end.month}",
@@ -174,212 +168,32 @@ class _HomeScreenState extends State<HomeScreen> {
               SizedBox(height: size.height * 0.03),
 
               _sectionTitle("Daily Steal Deals", size),
-              _horizontalList(size, 0.18),
+              _horizontalList(size, 0.18, "deals"),
 
               SizedBox(height: size.height * 0.03),
 
-              // ✅ BANK COUPONS SECTION (Same as screenshot)
               _sectionTitle("Coupons", size),
               _bankCouponsSection(size),
 
               SizedBox(height: size.height * 0.03),
 
               _sectionTitle("Today's Offers", size),
-              _horizontalList(size, 0.18),
+              _horizontalList(size, 0.18, "offers"),
 
               SizedBox(height: size.height * 0.03),
 
               _sectionTitle("Popular Destinations", size),
-              _horizontalList(size, 0.18),
+              _popularDestinationsList(context, size),
 
               SizedBox(height: size.height * 0.03),
 
               _sectionTitle("Popular Rooms", size),
-              _horizontalList(size, 0.22),
+              _horizontalList(size, 0.22, "rooms"),
 
               SizedBox(height: size.height * 0.03),
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  // ---------------- BANK COUPONS SECTION ----------------
-
-  Widget _bankCouponsSection(Size size) {
-    final List<Map<String, dynamic>> coupons = [
-      {
-        'logo': Icons.credit_card,
-        'logoColor': const Color(0xFFCC2027), // ICICI red
-        'title': 'UPTO 25% OFF',
-        'subtitle': 'On ICICI Credit Cards EMI',
-        'code': 'ICICIEMI',
-        'bgColor': Colors.white,
-      },
-      {
-        'logo': Icons.credit_card,
-        'logoColor': const Color(0xFF97144D), // Axis maroon
-        'title': 'FLAT 12% OFF',
-        'subtitle': 'on Axis Bank Credit Cards EMI',
-        'code': 'GOAXISEMI',
-        'bgColor': Colors.white,
-      },
-      {
-        'logo': Icons.account_balance,
-        'logoColor': const Color(0xFF0057A8), // SBI blue
-        'title': 'FLAT 10% OFF',
-        'subtitle': 'On SBI Credit Cards',
-        'code': 'SBIDEAL10',
-        'bgColor': Colors.white,
-      },
-    ];
-
-    return SizedBox(
-      height: size.height * 0.22,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: coupons.length,
-        itemBuilder: (context, index) {
-          final coupon = coupons[index];
-          final code = coupon['code'] as String;
-          final isCopied = copiedMap[code] ?? false;
-
-          return Container(
-            width: size.width * 0.52,
-            margin: EdgeInsets.only(right: size.width * 0.04),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey.shade200),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.06),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-
-                // ---- TOP: Logo ----
-                Padding(
-                  padding: const EdgeInsets.only(top: 16, bottom: 8),
-                  child: Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: (coupon['logoColor'] as Color).withOpacity(0.1),
-                    ),
-                    child: Icon(
-                      coupon['logo'] as IconData,
-                      color: coupon['logoColor'] as Color,
-                      size: 26,
-                    ),
-                  ),
-                ),
-
-                // ---- Title ----
-                Text(
-                  coupon['title'] as String,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: size.width * 0.038,
-                    color: Colors.black87,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-
-                const SizedBox(height: 4),
-
-                // ---- Subtitle ----
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: Text(
-                    coupon['subtitle'] as String,
-                    style: TextStyle(
-                      fontSize: size.width * 0.03,
-                      color: Colors.grey.shade600,
-                    ),
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                  ),
-                ),
-
-                const Spacer(),
-
-                // ---- Divider ----
-                Divider(color: Colors.grey.shade200, height: 1),
-
-                // ---- Coupon Code + Copy Button ----
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      // Dashed border code box
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: Colors.grey.shade400,
-                            width: 1,
-                            style: BorderStyle.solid,
-                          ),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          code,
-                          style: TextStyle(
-                            fontSize: size.width * 0.028,
-                            color: Colors.black87,
-                            fontWeight: FontWeight.w500,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ),
-
-                      // Copy Button
-                      GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            copiedMap[code] = true;
-                          });
-                          // Reset after 2 seconds
-                          Future.delayed(const Duration(seconds: 2), () {
-                            if (mounted) {
-                              setState(() {
-                                copiedMap[code] = false;
-                              });
-                            }
-                          });
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                          decoration: BoxDecoration(
-                            color: isCopied ? Colors.green : Colors.blue.shade600,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            isCopied ? "Copied!" : "Copy",
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
       ),
     );
   }
@@ -544,24 +358,30 @@ class _HomeScreenState extends State<HomeScreen> {
                       borderRadius: BorderRadius.circular(30),
                     ),
                   ),
-                  onPressed: () {
+                  onPressed: () async {
 
                     final searchLocation =
                     controller.text.isEmpty ? selectedLocation : controller.text;
 
-                    // ✅ Add to recent searches
                     if (!recentSearches.contains(searchLocation)) {
                       recentSearches.insert(0, searchLocation);
                     }
 
-                    Navigator.push(
+                    final result = await Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (_) => HotelListScreen(
                           location: searchLocation,
+                          selectedDates: selectedDates,
                         ),
                       ),
                     );
+
+                    if (result != null) {
+                      setState(() {
+                        selectedDates = result;
+                      });
+                    }
 
                     setState(() {});
                   },
@@ -578,36 +398,179 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ---------------- COMMON ----------------
+  // ---------------- COUPONS ----------------
 
-  Widget _sectionTitle(String title, Size size) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: size.height * 0.015),
-      child: Text(
-        title,
-        style: TextStyle(
-          fontSize: size.width * 0.05,
-          fontWeight: FontWeight.bold,
-        ),
+  Widget _bankCouponsSection(Size size) {
+    final coupons = [
+      {'title': 'UPTO 25% OFF', 'code': 'ICICIEMI'},
+      {'title': 'FLAT 12% OFF', 'code': 'GOAXISEMI'},
+      {'title': 'FLAT 10% OFF', 'code': 'SBIDEAL10'},
+    ];
+
+    return SizedBox(
+      height: size.height * 0.2,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: coupons.length,
+        itemBuilder: (context, index) {
+          final c = coupons[index];
+          final isCopied = copiedMap[c['code']] ?? false;
+
+          return Container(
+            width: size.width * 0.5,
+            margin: EdgeInsets.only(right: size.width * 0.04),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              color: Colors.white,
+            ),
+            child: Column(
+              children: [
+                Text(c['title']!,
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
+                const Spacer(),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(c['code']!),
+                    GestureDetector(
+                      onTap: () {
+                        setState(() => copiedMap[c['code']!] = true);
+                      },
+                      child: Text(isCopied ? "Copied" : "Copy"),
+                    )
+                  ],
+                )
+              ],
+            ),
+          );
+        },
       ),
     );
   }
 
-  Widget _horizontalList(Size size, double heightFactor) {
+  // ---------------- COMMON ----------------
+
+  Widget _sectionTitle(String title, Size size) {
+    return Text(title,
+        style: TextStyle(
+            fontSize: size.width * 0.05,
+            fontWeight: FontWeight.bold));
+  }
+
+  Widget _horizontalList(Size size, double heightFactor, String seed) {
     return SizedBox(
       height: size.height * heightFactor,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         itemCount: 5,
+        itemBuilder: (_, index) => Container(
+          width: size.width * 0.6,
+          margin: EdgeInsets.only(right: size.width * 0.04),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.network(
+              "https://picsum.photos/seed/${seed}_$index/800/600",
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) =>
+                  Image.asset('lib/assets/bg_image.jpeg', fit: BoxFit.cover),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _popularDestinationsList(BuildContext context, Size size) {
+    final destinations = [
+      {
+        "name": "Ho Chi Minh",
+        "subtitle": "Economical, historical and entertainment centre of Vietnam",
+        "image": "https://picsum.photos/seed/hochiminh/800/600"
+      },
+      {
+        "name": "Paris",
+        "subtitle": "The City of Light",
+        "image": "https://picsum.photos/seed/paris/800/600"
+      },
+    ];
+
+    return SizedBox(
+      height: size.height * 0.22,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: destinations.length,
         itemBuilder: (context, index) {
-          return Container(
-            width: size.width * 0.6,
-            margin: EdgeInsets.only(right: size.width * 0.04),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              image: const DecorationImage(
-                image: AssetImage('lib/assets/bg_image.jpeg'),
-                fit: BoxFit.cover,
+          final dest = destinations[index];
+          return GestureDetector(
+            onTap: () async {
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => HotelListScreen(
+                    location: dest["name"]!,
+                    selectedDates: selectedDates,
+                  ),
+                ),
+              );
+              if (result != null) {
+                setState(() {
+                  selectedDates = result;
+                });
+              }
+            },
+            child: Container(
+              width: size.width * 0.65,
+              margin: EdgeInsets.only(right: size.width * 0.04),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Image.network(
+                      dest["image"]!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) =>
+                          Image.asset('lib/assets/bg_image.jpeg', fit: BoxFit.cover),
+                    ),
+                    Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Colors.transparent, Colors.black.withOpacity(0.8)],
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          stops: const [0.5, 1.0],
+                        ),
+                      ),
+                      padding: const EdgeInsets.all(16),
+                      alignment: Alignment.bottomLeft,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            dest["name"]!,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            dest["subtitle"]!,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           );

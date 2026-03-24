@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'phone_auth_screen.dart';
 
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
@@ -75,7 +76,10 @@ class LoginScreen extends StatelessWidget {
                         ),
                       ),
                       onPressed: () {
-                        Navigator.pushReplacementNamed(context, '/home');
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const PhoneAuthScreen()),
+                        );
                       },
                       icon: const Icon(Icons.phone, color: Colors.white),
                       label: const Text(
