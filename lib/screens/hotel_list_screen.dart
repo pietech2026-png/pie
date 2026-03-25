@@ -4,11 +4,15 @@ import 'hotel_full_view_screen.dart';
 class HotelListScreen extends StatelessWidget {
   final String location;
   final DateTimeRange selectedDates;
+  final int rooms;
+  final int adults;
 
   const HotelListScreen({
     super.key,
     required this.location,
     required this.selectedDates,
+    this.rooms = 1,
+    this.adults = 2,
   });
 
   @override
@@ -57,6 +61,8 @@ class HotelListScreen extends StatelessWidget {
                   builder: (_) => HotelFullViewScreen(
                     hotel: hotel,
                     selectedDates: selectedDates,
+                    rooms: rooms,
+                    adults: adults,
                   ),
                 ),
               );

@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:pie/services/location_service.dart';
 import 'package:pie/screens/hotel_list_screen.dart';
-import 'banner_view.dart';
-import 'guest_screen.dart';
-import 'calendar_screen.dart';
+import 'guest_screen.dart'; // For Person Selection
+import 'calendar_screen.dart'; // For Dates Selection
 
 // ---------------- HOME SCREEN ----------------
 class HomeScreen extends StatefulWidget {
@@ -373,6 +372,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         builder: (_) => HotelListScreen(
                           location: searchLocation,
                           selectedDates: selectedDates,
+                          rooms: rooms,
+                          adults: adults,
                         ),
                       ),
                     );
@@ -510,6 +511,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   builder: (_) => HotelListScreen(
                     location: dest["name"]!,
                     selectedDates: selectedDates,
+                    rooms: rooms,
+                    adults: adults,
                   ),
                 ),
               );

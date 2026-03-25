@@ -5,15 +5,20 @@ import 'package:flutter/services.dart';
 import 'package:pie/services/location_service.dart';
 import 'calendar_screen.dart';
 import 'hotel_reviews_screen.dart';
+import 'select_room.dart';
 
 class HotelFullViewScreen extends StatefulWidget {
   final Map<String, dynamic> hotel;
   final DateTimeRange selectedDates;
+  final int rooms;
+  final int adults;
 
   const HotelFullViewScreen({
     super.key,
     required this.hotel,
     required this.selectedDates,
+    this.rooms = 1,
+    this.adults = 2,
   });
 
   @override
@@ -42,7 +47,7 @@ class _HotelFullViewScreenState extends State<HotelFullViewScreen> {
       if (mounted) {
         setState(() {
           if (results.isNotEmpty && results.first['display_name'] != null) {
-            _realAddress = results.first['display_name'];
+            _realAddress = results.first[ 'display_name'];
           } else {
             _realAddress = widget.hotel["location"] ?? "Unknown Location";
           }
@@ -68,58 +73,116 @@ class _HotelFullViewScreenState extends State<HotelFullViewScreen> {
     return Scaffold(
       backgroundColor: Colors.grey.shade100,
 
-      // 🔥 BOTTOM BAR (UPDATED WITH "1 Room - Fits 2 Adults")
+      // ── BOTTOM NAV BAR ─────────────────────────────────────────
       bottomNavigationBar: Container(
-        padding: const EdgeInsets.all(12),
         decoration: const BoxDecoration(
           color: Colors.white,
-          boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 5)],
+          boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 6)],
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-
-            // 🔥 NEW TEXT (ADDED ONLY THIS)
-            const Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                "1 Room - Fits 2 Adults",
-                style: TextStyle(fontSize: 13, color: Colors.grey),
-              ),
-            ),
-
-            const SizedBox(height: 6),
-
-            Row(
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text("₹2,167",
-                          style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                      Text("per night\n+₹435 taxes & fees",
-                          style: TextStyle(fontSize: 12, color: Colors.grey)),
-                    ],
-                  ),
+                // "1 Room - Fits N Adults" label
+                Text(
+                  "${widget.rooms} Room - Fits ${widget.adults} Adults",
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
                 ),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.deepOrange,
-                    padding:
-                    const EdgeInsets.symmetric(horizontal: 30, vertical: 14),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10)),
-                  ),
-                  onPressed: () {},
-                  child: const Text("Select Room",
-                      style: TextStyle(color: Colors.white)),
+                const SizedBox(height: 8),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Strikethrough + offers row
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Text(
+                                "₹6,390",
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.black45,
+                                  decoration: TextDecoration.lineThrough,
+                                  decorationColor: Colors.black45,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              const Icon(Icons.local_offer_outlined,
+                                  size: 13, color: Color(0xFF1565C0)),
+                              const SizedBox(width: 3),
+                              const Text(
+                                "2 Offers Applied",
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFF1565C0),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const Icon(Icons.keyboard_arrow_up,
+                                  size: 16, color: Color(0xFF1565C0)),
+                            ],
+                          ),
+                          // Bold price
+                          const Text(
+                            "₹2,167",
+                            style: TextStyle(
+                                fontSize: 20, fontWeight: FontWeight.bold),
+                          ),
+                          // Taxes
+                          const Text(
+                            "+₹435 taxes & fees",
+                            style:
+                                TextStyle(fontSize: 12, color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Orange Select Room button
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFE8520A),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 24, vertical: 15),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10)),
+                        elevation: 0,
+                      ),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => SelectRoomScreen(
+                              hotelName: widget.hotel["name"] as String,
+                              selectedDates: selectedDates,
+                              guests: widget.adults,
+                              rooms: widget.rooms,
+                            ),
+                          ),
+                        );
+                      },
+                      child: const Text(
+                        "Select Room",
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ],
+          ),
         ),
       ),
 
