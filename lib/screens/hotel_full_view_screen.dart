@@ -922,6 +922,8 @@ class _HotelFullViewScreenState extends State<HotelFullViewScreen> {
               ),
             ),
           ),
+
+          
           // Right notch
           Positioned(
             right: -14,
