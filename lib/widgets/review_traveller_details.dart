@@ -1,17 +1,87 @@
 import 'package:flutter/material.dart';
+import 'package:pie/services/auth_service.dart';
 
 class ReviewTravellerDetails extends StatefulWidget {
   const ReviewTravellerDetails({super.key});
 
   @override
-  State<ReviewTravellerDetails> createState() => _ReviewTravellerDetailsState();
+  State<ReviewTravellerDetails> createState() => ReviewTravellerDetailsState();
 }
 
-class _ReviewTravellerDetailsState extends State<ReviewTravellerDetails> {
+class ReviewTravellerDetailsState extends State<ReviewTravellerDetails> {
   String selectedTitle = 'Mr.';
   bool saveToProfile = false;
   bool hasGST = false;
   bool agreeToTerms = true;
+
+  final TextEditingController firstNameController = TextEditingController();
+  final TextEditingController lastNameController = TextEditingController();
+  final TextEditingController phoneController = TextEditingController();
+  final TextEditingController emailController = TextEditingController();
+
+  final FocusNode firstNameFocus = FocusNode();
+  final FocusNode lastNameFocus = FocusNode();
+  final FocusNode phoneFocus = FocusNode();
+  final FocusNode emailFocus = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    // Auto-fill phone number from AuthService if available
+    if (AuthService.phoneNumber != null) {
+      phoneController.text = AuthService.phoneNumber!;
+    }
+  }
+
+  @override
+  void dispose() {
+    firstNameController.dispose();
+    lastNameController.dispose();
+    phoneController.dispose();
+    emailController.dispose();
+    firstNameFocus.dispose();
+    lastNameFocus.dispose();
+    phoneFocus.dispose();
+    emailFocus.dispose();
+    super.dispose();
+  }
+
+  bool validate() {
+    if (firstNameController.text.trim().isEmpty) {
+      firstNameFocus.requestFocus();
+      _showError('First Name is required');
+      return false;
+    }
+    if (lastNameController.text.trim().isEmpty) {
+      lastNameFocus.requestFocus();
+      _showError('Surname is required');
+      return false;
+    }
+    if (phoneController.text.trim().isEmpty) {
+      phoneFocus.requestFocus();
+      _showError('Phone Number is required');
+      return false;
+    }
+    if (emailController.text.trim().isEmpty) {
+      emailFocus.requestFocus();
+      _showError('Email Address is required');
+      return false;
+    }
+    if (!agreeToTerms) {
+      _showError('You must agree to the terms');
+      return false;
+    }
+    return true;
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -52,11 +122,19 @@ class _ReviewTravellerDetailsState extends State<ReviewTravellerDetails> {
               Row(
                 children: [
                   Expanded(
-                    child: _buildTextField('First Name'),
+                    child: _buildTextField(
+                      hint: 'First Name',
+                      controller: firstNameController,
+                      focusNode: firstNameFocus,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: _buildTextField('Surname'),
+                    child: _buildTextField(
+                      hint: 'Surname',
+                      controller: lastNameController,
+                      focusNode: lastNameFocus,
+                    ),
                   ),
                 ],
               ),
@@ -69,8 +147,8 @@ class _ReviewTravellerDetailsState extends State<ReviewTravellerDetails> {
               Row(
                 children: [
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 14),
                     decoration: BoxDecoration(
                       border: Border.all(color: Colors.grey.shade300),
                       borderRadius: BorderRadius.circular(6),
@@ -78,8 +156,8 @@ class _ReviewTravellerDetailsState extends State<ReviewTravellerDetails> {
                     child: Row(
                       children: const [
                         Text('+91',
-                            style:
-                                TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                            style: TextStyle(
+                                fontSize: 15, fontWeight: FontWeight.bold)),
                         SizedBox(width: 4),
                         Icon(Icons.keyboard_arrow_down, size: 20),
                       ],
@@ -88,6 +166,9 @@ class _ReviewTravellerDetailsState extends State<ReviewTravellerDetails> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: TextField(
+                      controller: phoneController,
+                      focusNode: phoneFocus,
+                      keyboardType: TextInputType.phone,
                       decoration: InputDecoration(
                         labelText: 'Phone Number',
                         labelStyle: const TextStyle(color: Color(0xFF1565C0)),
@@ -100,7 +181,8 @@ class _ReviewTravellerDetailsState extends State<ReviewTravellerDetails> {
                           borderRadius: BorderRadius.circular(6),
                           borderSide: const BorderSide(color: Color(0xFF1565C0)),
                         ),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                        contentPadding:
+                            const EdgeInsets.symmetric(horizontal: 16),
                       ),
                     ),
                   ),
@@ -112,7 +194,12 @@ class _ReviewTravellerDetailsState extends State<ReviewTravellerDetails> {
                 style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 12),
-              _buildTextField('Enter email address'),
+              _buildTextField(
+                hint: 'Enter email address',
+                controller: emailController,
+                focusNode: emailFocus,
+                keyboardType: TextInputType.emailAddress,
+              ),
             ],
           ),
         ),
@@ -211,21 +298,21 @@ class _ReviewTravellerDetailsState extends State<ReviewTravellerDetails> {
                   style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 12),
-                _buildTextField('Enter Registration Number'),
+                _buildTextField(hint: 'Enter Registration Number'),
                 const SizedBox(height: 20),
                 const Text(
                   'Registered Company Name',
                   style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 12),
-                _buildTextField('Enter Registered Company Name'),
+                _buildTextField(hint: 'Enter Registered Company Name'),
                 const SizedBox(height: 20),
                 const Text(
                   'Registered Company Address',
                   style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 12),
-                _buildTextField('Enter Registered Company Address'),
+                _buildTextField(hint: 'Enter Registered Company Address'),
                 const SizedBox(height: 8),
               ],
             ],
@@ -287,15 +374,24 @@ class _ReviewTravellerDetailsState extends State<ReviewTravellerDetails> {
             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),
           Text(title,
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+              style:
+                  const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
           const SizedBox(width: 20),
         ],
       ),
     );
   }
 
-  Widget _buildTextField(String hint) {
+  Widget _buildTextField({
+    required String hint,
+    TextEditingController? controller,
+    FocusNode? focusNode,
+    TextInputType? keyboardType,
+  }) {
     return TextField(
+      controller: controller,
+      focusNode: focusNode,
+      keyboardType: keyboardType,
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
@@ -307,7 +403,8 @@ class _ReviewTravellerDetailsState extends State<ReviewTravellerDetails> {
           borderRadius: BorderRadius.circular(6),
           borderSide: BorderSide(color: Colors.grey.shade300),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       ),
     );
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pie/services/auth_service.dart';
 import 'verify_screen.dart';
 
 class PhoneAuthScreen extends StatefulWidget {
@@ -134,6 +135,7 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
                         ),
                         onPressed: () {
                           if (phoneNumber.isNotEmpty) {
+                            AuthService.phoneNumber = phoneNumber;
                             Navigator.push(
                               context,
                               MaterialPageRoute(builder: (context) => const VerifyScreen()),

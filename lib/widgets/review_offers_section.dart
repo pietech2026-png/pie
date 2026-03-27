@@ -1,7 +1,16 @@
 import 'package:flutter/material.dart';
 
 class ReviewOffersSection extends StatelessWidget {
-  const ReviewOffersSection({super.key});
+  final List<String> appliedCoupons;
+  final Function(Map<String, dynamic>) onApply;
+  final Function(String) onRemove;
+
+  const ReviewOffersSection({
+    super.key,
+    required this.appliedCoupons,
+    required this.onApply,
+    required this.onRemove,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -29,16 +38,17 @@ class ReviewOffersSection extends StatelessWidget {
             code: 'FIRSTSTAY',
             discount: '-₹2,755',
             description: 'EXCLUSIVE offer on your first hotel booking!',
-            actionLabel: 'REMOVE',
-            isApplied: true,
+            isApplied: appliedCoupons.contains('FIRSTSTAY'),
+            discountValue: 2755,
           ),
           const SizedBox(height: 12),
           _buildOfferCard(
             code: 'GOSMARTDEAL',
             discount: '-₹2,619',
-            description: 'Use GOSMARTDEAL to get instant discount on this hotel booking.',
-            actionLabel: 'APPLY',
-            isApplied: false,
+            description:
+                'Use GOSMARTDEAL to get instant discount on this hotel booking.',
+            isApplied: appliedCoupons.contains('GOSMARTDEAL'),
+            discountValue: 2619,
           ),
         ],
       ),
@@ -71,8 +81,8 @@ class ReviewOffersSection extends StatelessWidget {
     required String code,
     required String discount,
     required String description,
-    required String actionLabel,
     required bool isApplied,
+    required int discountValue,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -90,11 +100,13 @@ class ReviewOffersSection extends StatelessWidget {
               children: [
                 Text(
                   code,
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                  style:
+                      const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
                 ),
                 Text(
                   discount,
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                  style:
+                      const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
@@ -111,9 +123,19 @@ class ReviewOffersSection extends StatelessWidget {
                   ),
                 ),
                 GestureDetector(
-                  onTap: () {},
+                  onTap: () {
+                    if (isApplied) {
+                      onRemove(code);
+                    } else {
+                      onApply({
+                        'code': code,
+                        'discount': discountValue,
+                        'description': description,
+                      });
+                    }
+                  },
                   child: Text(
-                    actionLabel,
+                    isApplied ? 'REMOVE' : 'APPLY',
                     style: const TextStyle(
                       color: Color(0xFF1565C0),
                       fontWeight: FontWeight.bold,

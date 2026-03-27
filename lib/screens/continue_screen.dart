@@ -37,8 +37,13 @@ class ContinueScreen extends StatefulWidget {
 }
 
 class _ContinueScreenState extends State<ContinueScreen> {
+  final GlobalKey<ReviewTravellerDetailsState> travellerKey =
+      GlobalKey<ReviewTravellerDetailsState>();
   bool isLoginToggled = false;
   bool isBreakfastAdded = false;
+  bool isPlantationContributed = false;
+
+  List<Map<String, dynamic>> appliedCoupons = [];
 
   Map<String, bool> selectedAddons = {
     'luggage': false,
@@ -69,6 +74,27 @@ class _ContinueScreenState extends State<ContinueScreen> {
       if (value) total += addonPrices[key]!;
     });
     return total;
+  }
+
+  int get totalCouponDiscount {
+    int total = 0;
+    for (var coupon in appliedCoupons) {
+      total += (coupon['discount'] as int);
+    }
+    return total;
+  }
+
+  void _applyCoupon(Map<String, dynamic> coupon) {
+    setState(() {
+      appliedCoupons.clear();
+      appliedCoupons.add(coupon);
+    });
+  }
+
+  void _removeCoupon(String code) {
+    setState(() {
+      appliedCoupons.removeWhere((c) => c['code'] == code);
+    });
   }
 
   List<Map<String, dynamic>> get appliedAddonsList {
@@ -174,12 +200,21 @@ class _ContinueScreenState extends State<ContinueScreen> {
             ),
             const ReviewRulesSection(),
             const SizedBox(height: 12),
-            const ReviewPromoBanners(),
+            ReviewPromoBanners(
+              isContributed: isPlantationContributed,
+              onContributedChanged: (value) {
+                setState(() {
+                  isPlantationContributed = value;
+                });
+              },
+            ),
             const SizedBox(height: 12),
             ReviewPriceSummary(
               price: widget.price,
               taxes: widget.taxes,
               addonPrice: totalAddonPrice,
+              couponDiscount: totalCouponDiscount,
+              contributionPrice: isPlantationContributed ? 10 : 0,
               appliedAddons: appliedAddonsList,
               formatPrice: _formatPrice,
             ),
@@ -199,51 +234,69 @@ class _ContinueScreenState extends State<ContinueScreen> {
               },
             ),
             const SizedBox(height: 12),
-            GestureDetector(
-              onTap: () => OffersAppliedSheet.show(
-                context,
-                totalSavings: 4562,
-                priceAfterDiscount: 2438,
-                roomCount: widget.roomCount,
-                nights: nights,
-              ),
-              child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE8F5E9),
-                  borderRadius: BorderRadius.circular(8),
+            ReviewOffersSection(
+              appliedCoupons: appliedCoupons.map((c) => c['code'] as String).toList(),
+              onApply: _applyCoupon,
+              onRemove: _removeCoupon,
+            ),
+            if (appliedCoupons.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              GestureDetector(
+                onTap: () => OffersAppliedSheet.show(
+                  context,
+                  totalSavings: totalCouponDiscount,
+                  priceAfterDiscount: (widget.price * nights * widget.roomCount) +
+                      widget.taxes +
+                      totalAddonPrice +
+                      (isPlantationContributed ? 10 : 0) -
+                      totalCouponDiscount,
+                  roomCount: widget.roomCount,
+                  nights: nights,
                 ),
-                child: Row(
-                  children: const [
-                    Icon(Icons.check_circle, color: Colors.green, size: 18),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        '2 offers applied',
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE8F5E9),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.check_circle, color: Colors.green, size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          '1 offer applied',
+                          style: const TextStyle(
+                              color: Colors.green,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14),
+                        ),
+                      ),
+                      const Text(
+                        'VIEW',
                         style: TextStyle(
-                            color: Colors.green,
+                            color: Color(0xFF1565C0),
                             fontWeight: FontWeight.bold,
                             fontSize: 14),
                       ),
-                    ),
-                    Text(
-                      'VIEW',
-                      style: TextStyle(
-                          color: Color(0xFF1565C0),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
+            ],
+            const SizedBox(height: 12),
+            ReviewPromoCode(
+              onApply: (code) {
+                _applyCoupon({
+                  'code': code,
+                  'discount': 500, // Default discount for promo codes
+                  'description': 'Promo code applied successfully!',
+                });
+              },
             ),
             const SizedBox(height: 12),
-            const ReviewOffersSection(),
-            const SizedBox(height: 12),
-            const ReviewPromoCode(),
-            const SizedBox(height: 12),
-            const ReviewTravellerDetails(),
+            ReviewTravellerDetails(key: travellerKey),
             const SizedBox(height: 100), // Spacing for bottom bar
           ],
         ),
@@ -259,14 +312,20 @@ class _ContinueScreenState extends State<ContinueScreen> {
         selectedDates: widget.selectedDates,
         hotelName: widget.hotelName,
         addonPrice: totalAddonPrice,
-        totalSavings: 4562,
-        priceAfterDiscount: 2438,
+        totalSavings: totalCouponDiscount,
+        contributionPrice: isPlantationContributed ? 10 : 0,
+        priceAfterDiscount: (widget.price * nights * widget.roomCount) +
+            widget.taxes +
+            totalAddonPrice +
+            (isPlantationContributed ? 10 : 0) -
+            totalCouponDiscount,
         buttonText: 'Confirm\nTraveller Details',
         onPressed: () {
-          // Placeholder for final confirmation
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Booking Confirmed!')),
-          );
+          if (travellerKey.currentState?.validate() ?? false) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Booking Confirmed!')),
+            );
+          }
         },
       ),
     );

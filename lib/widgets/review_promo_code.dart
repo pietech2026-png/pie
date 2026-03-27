@@ -1,7 +1,22 @@
 import 'package:flutter/material.dart';
 
-class ReviewPromoCode extends StatelessWidget {
-  const ReviewPromoCode({super.key});
+class ReviewPromoCode extends StatefulWidget {
+  final Function(String) onApply;
+
+  const ReviewPromoCode({super.key, required this.onApply});
+
+  @override
+  State<ReviewPromoCode> createState() => _ReviewPromoCodeState();
+}
+
+class _ReviewPromoCodeState extends State<ReviewPromoCode> {
+  final TextEditingController _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,11 +44,17 @@ class ReviewPromoCode extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           TextField(
+            controller: _controller,
             decoration: InputDecoration(
               hintText: 'Enter Promo Code',
               hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
               suffixIcon: TextButton(
-                onPressed: () {},
+                onPressed: () {
+                  if (_controller.text.isNotEmpty) {
+                    widget.onApply(_controller.text);
+                    _controller.clear();
+                  }
+                },
                 child: const Text(
                   'Apply',
                   style: TextStyle(

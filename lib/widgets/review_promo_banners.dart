@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 
-class ReviewPromoBanners extends StatefulWidget {
-  const ReviewPromoBanners({super.key});
+class ReviewPromoBanners extends StatelessWidget {
+  final bool isContributed;
+  final ValueChanged<bool> onContributedChanged;
 
-  @override
-  State<ReviewPromoBanners> createState() => _ReviewPromoBannersState();
-}
+  const ReviewPromoBanners({
+    super.key,
+    required this.isContributed,
+    required this.onContributedChanged,
+  });
 
-class _ReviewPromoBannersState extends State<ReviewPromoBanners> {
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -26,8 +28,8 @@ class _ReviewPromoBannersState extends State<ReviewPromoBanners> {
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 2),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
                       color: const Color(0xFFFFF3E0),
                       borderRadius: BorderRadius.circular(12),
@@ -57,8 +59,7 @@ class _ReviewPromoBannersState extends State<ReviewPromoBanners> {
                         ),
                         Text(
                           'Use additional benefits on your next bookings.',
-                          style: TextStyle(
-                              fontSize: 12, color: Colors.black54),
+                          style: TextStyle(fontSize: 12, color: Colors.black54),
                         ),
                       ],
                     ),
@@ -89,33 +90,43 @@ class _ReviewPromoBannersState extends State<ReviewPromoBanners> {
                           color: Colors.black),
                     ),
                   ),
-                  Container(
-                    width: 70,
-                    height: 35,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE0E0E0),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Stack(
-                      children: [
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: Padding(
-                            padding: const EdgeInsets.all(2),
-                            child: Container(
-                              width: 31,
-                              height: 31,
-                              decoration: const BoxDecoration(
-                                color: Colors.white,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Center(
-                                child: Text('☹️', style: TextStyle(fontSize: 18)),
+                  GestureDetector(
+                    onTap: () => onContributedChanged(!isContributed),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      width: 70,
+                      height: 35,
+                      decoration: BoxDecoration(
+                        color: isContributed
+                            ? const Color(0xFFC8E6C9)
+                            : const Color(0xFFE0E0E0),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Stack(
+                        children: [
+                          AnimatedAlign(
+                            duration: const Duration(milliseconds: 200),
+                            alignment: isContributed
+                                ? Alignment.centerRight
+                                : Alignment.centerLeft,
+                            child: Padding(
+                              padding: const EdgeInsets.all(2),
+                              child: Container(
+                                width: 31,
+                                height: 31,
+                                decoration: const BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Center(
+                                  child: Text(isContributed ? '😊' : '☹️',
+                                      style: const TextStyle(fontSize: 18)),
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ],

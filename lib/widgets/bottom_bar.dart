@@ -17,6 +17,7 @@ Widget buildBottomBar({
   int addonPrice = 0,
   int totalSavings = 0,
   int priceAfterDiscount = 0,
+  int contributionPrice = 0,
 }) {
   return Container(
     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -113,37 +114,39 @@ Widget buildBottomBar({
                         decoration: TextDecoration.lineThrough,
                       ),
                     ),
-                    GestureDetector(
-                      onTap: () => OffersAppliedSheet.show(
-                        context,
-                        totalSavings: totalSavings,
-                        priceAfterDiscount: priceAfterDiscount,
-                        roomCount: roomCount,
-                        nights: selectedDates.duration.inDays,
+                    if (totalSavings > 0)
+                      GestureDetector(
+                        onTap: () => OffersAppliedSheet.show(
+                          context,
+                          totalSavings: totalSavings,
+                          priceAfterDiscount: priceAfterDiscount,
+                          roomCount: roomCount,
+                          nights: selectedDates.duration.inDays,
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.local_offer_outlined,
+                                size: 13, color: Color(0xFF1565C0)),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${totalSavings > 0 ? 1 : 0} Offer Applied',
+                              style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFF1565C0),
+                                  fontWeight: FontWeight.w600),
+                            ),
+                            const Icon(Icons.keyboard_arrow_up,
+                                size: 16, color: Color(0xFF1565C0)),
+                          ],
+                        ),
                       ),
-                      child: Row(
-                        children: const [
-                          Icon(Icons.local_offer_outlined,
-                              size: 13, color: Color(0xFF1565C0)),
-                          SizedBox(width: 4),
-                          Text(
-                            '2 Offers Applied',
-                            style: TextStyle(
-                                fontSize: 12,
-                                color: Color(0xFF1565C0),
-                                fontWeight: FontWeight.w600),
-                          ),
-                          Icon(Icons.keyboard_arrow_up,
-                              size: 16, color: Color(0xFF1565C0)),
-                        ],
-                      ),
-                    ),
                     RichText(
                       text: TextSpan(
                         style: const TextStyle(color: Colors.black),
                         children: [
                           TextSpan(
-                            text: '₹${formatPrice(price * (selectedDates.duration.inDays * roomCount) + taxes + addonPrice)}',
+                            text:
+                                '₹${formatPrice((price * selectedDates.duration.inDays * roomCount) + taxes + addonPrice + contributionPrice - totalSavings)}',
                             style: const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,

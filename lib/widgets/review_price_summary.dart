@@ -4,6 +4,8 @@ class ReviewPriceSummary extends StatefulWidget {
   final int price;
   final int taxes;
   final int addonPrice;
+  final int couponDiscount;
+  final int contributionPrice;
   final List<Map<String, dynamic>> appliedAddons;
   final String Function(int) formatPrice;
 
@@ -12,6 +14,8 @@ class ReviewPriceSummary extends StatefulWidget {
     required this.price,
     required this.taxes,
     required this.addonPrice,
+    required this.couponDiscount,
+    required this.contributionPrice,
     required this.appliedAddons,
     required this.formatPrice,
   });
@@ -90,6 +94,47 @@ class _ReviewPriceSummaryState extends State<ReviewPriceSummary> {
                             ),
                           ],
                         ),
+                        if (widget.couponDiscount > 0)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 16),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  'Coupon Discount',
+                                  style: TextStyle(
+                                      fontSize: 15, color: Colors.green),
+                                ),
+                                Text(
+                                  '- ₹${widget.formatPrice(widget.couponDiscount)}',
+                                  style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.green),
+                                ),
+                              ],
+                            ),
+                          ),
+                        if (widget.contributionPrice > 0)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 16),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  'Plantation Contribution',
+                                  style: TextStyle(
+                                      fontSize: 15, color: Colors.black87),
+                                ),
+                                Text(
+                                  '₹${widget.formatPrice(widget.contributionPrice)}',
+                                  style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                          ),
                         ...widget.appliedAddons.map((addon) => Padding(
                               padding: const EdgeInsets.only(top: 16),
                               child: Row(
@@ -129,7 +174,7 @@ class _ReviewPriceSummaryState extends State<ReviewPriceSummary> {
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               Text(
-                '₹${widget.formatPrice(widget.price + widget.taxes + widget.addonPrice)}',
+                '₹${widget.formatPrice(widget.price + widget.taxes + widget.addonPrice + widget.contributionPrice - widget.couponDiscount)}',
                 style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
             ],
