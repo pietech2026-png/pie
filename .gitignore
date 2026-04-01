@@ -44,4 +44,4 @@ app.*.map.json
 
 # Node backend
 node_modules
-.env
+.env.DS_Store
