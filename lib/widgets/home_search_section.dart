@@ -3,6 +3,8 @@ import '../services/location_service.dart';
 import '../screens/calendar_screen.dart';
 import '../screens/guest_screen.dart';
 import '../screens/hotel_list_screen.dart';
+import '../services/api_service.dart';
+import '../services/auth_service.dart';
 
 class HomeSearchSection extends StatefulWidget {
   final String initialLocation;
@@ -191,6 +193,23 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
               ),
               onPressed: () {
                 final finalLocation = controller.text.isEmpty ? selectedLocation : controller.text;
+                
+                // 🔥 Capture Lead if logged in
+                if (AuthService.phoneNumber != null) {
+                  ApiService.createLead({
+                    "guestName": "User ${AuthService.phoneNumber}",
+                    "phone": AuthService.phoneNumber,
+                    "location": finalLocation,
+                    "preferredDates": {
+                      "checkIn": selectedDates.start.toIso8601String(),
+                      "checkOut": selectedDates.end.toIso8601String(),
+                    },
+                    "guests": adults + children,
+                    "roomPreference": "$rooms Room(s)",
+                    "source": "User App Search",
+                  });
+                }
+
                 widget.onSearch(finalLocation, selectedDates, rooms, adults, children);
                 
                 Navigator.push(
