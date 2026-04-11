@@ -1,6 +1,7 @@
-import React, { useState } from "react";
-import { User, Phone, MapPin, Calendar, Users, Coffee, Plus, Save } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { User, Phone, MapPin, Calendar, Users, Coffee, Plus, Save, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
+import { api } from "../utils/api";
 
 export default function CreateBooking() {
   const [formData, setFormData] = useState({
@@ -9,14 +10,113 @@ export default function CreateBooking() {
     hotel: "",
     checkIn: "",
     checkOut: "",
-    roomType: "Deluxe Room",
+    roomType: "",
     guests: 2,
     breakfast: true,
+    totalPrice: 0,
+    manualPrice: false,
   });
 
-  const handleSubmit = (e) => {
+  const [hotels, setHotels] = useState([]);
+  const [rooms, setRooms] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchHotelsData = async () => {
+      try {
+        const data = await api.getHotels();
+        setHotels(data);
+      } catch (error) {
+        console.error("Failed to fetch hotels:", error);
+      }
+    };
+    fetchHotelsData();
+  }, []);
+
+  useEffect(() => {
+    const fetchRoomsData = async () => {
+      if (formData.hotel) {
+        try {
+          const data = await api.getRoomsByHotel(formData.hotel);
+          setRooms(data);
+          if (data.length > 0) {
+            setFormData(prev => ({ ...prev, roomType: data[0].id }));
+          }
+        } catch (error) {
+          console.error("Failed to fetch rooms:", error);
+        }
+      } else {
+        setRooms([]);
+      }
+    };
+    fetchRoomsData();
+  }, [formData.hotel]);
+
+  // 🔥 Auto-calculate price when dates or room changes
+  useEffect(() => {
+    if (formData.checkIn && formData.checkOut && formData.roomType && !formData.manualPrice) {
+      const selectedRoom = rooms.find(r => r.id === formData.roomType);
+      if (selectedRoom) {
+        const checkInDate = new Date(formData.checkIn);
+        const checkOutDate = new Date(formData.checkOut);
+        const days = Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24)) || 1;
+        if (days > 0) {
+          setFormData(prev => ({ ...prev, totalPrice: selectedRoom.basePrice * days }));
+        }
+      }
+    }
+  }, [formData.checkIn, formData.checkOut, formData.roomType, rooms, formData.manualPrice]);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    alert("Booking Created Successfully!");
+    setLoading(true);
+    try {
+      // 1. Find or Create User
+      const user = await api.findOrCreateUser({
+        name: formData.guestName,
+        phone: formData.phone
+      });
+
+      // 2. Prepare Booking Data
+      const selectedRoom = rooms.find(r => r.id === formData.roomType);
+      if (!selectedRoom) throw new Error("Please select a room type");
+
+      const checkInDate = new Date(formData.checkIn);
+      const checkOutDate = new Date(formData.checkOut);
+      const days = Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24));
+      
+      const bookingPayload = {
+        hotel: formData.hotel,
+        room: formData.roomType,
+        user: user._id,
+        checkIn: formData.checkIn,
+        checkOut: formData.checkOut,
+        guests: Number(formData.guests),
+        totalPrice: Number(formData.totalPrice),
+        source: "admin",
+        specialRequests: formData.breakfast ? "Breakfast Included" : ""
+      };
+
+      await api.createBooking(bookingPayload);
+      alert("Booking Created Successfully!");
+      setFormData({
+        guestName: "",
+        phone: "",
+        hotel: "",
+        checkIn: "",
+        checkOut: "",
+        roomType: "",
+        guests: 2,
+        breakfast: true,
+        totalPrice: 0,
+        manualPrice: false,
+      });
+    } catch (error) {
+      console.error("Booking Error:", error);
+      alert("Error creating booking: " + error.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -80,9 +180,9 @@ export default function CreateBooking() {
                 style={{ width: "100%", paddingLeft: "44px" }} 
               >
                 <option value="">Select a hotel...</option>
-                <option value="Grand Pie Resort">Grand Pie Resort</option>
-                <option value="Pie Boutique Hotel">Pie Boutique Hotel</option>
-                <option value="Mountain Pie Inn">Mountain Pie Inn</option>
+                {hotels.map(h => (
+                  <option key={h.id} value={h.id}>{h.name}</option>
+                ))}
               </select>
             </div>
           </div>
@@ -119,24 +219,34 @@ export default function CreateBooking() {
               value={formData.roomType}
               onChange={(e) => setFormData({...formData, roomType: e.target.value})}
               style={{ width: "100%" }} 
+              disabled={!formData.hotel}
             >
-              <option>Standard Room</option>
-              <option>Deluxe Room</option>
-              <option>Family Suite</option>
-              <option>Penthouse</option>
+              <option value="">Select a room...</option>
+              {rooms.map(r => (
+                <option key={r.id} value={r.id}>{r.type} (₹{r.basePrice})</option>
+              ))}
             </select>
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-            <label style={{ fontSize: "14px", fontWeight: "600" }}>Number of Guests</label>
+            <label style={{ fontSize: "14px", fontWeight: "600" }}>Total Booking Price (₹)</label>
             <div style={{ position: "relative" }}>
-              <Users size={18} style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)", color: "var(--text-secondary)" }} />
               <input 
                 type="number" 
-                value={formData.guests}
-                onChange={(e) => setFormData({...formData, guests: e.target.value})}
-                style={{ width: "100%", paddingLeft: "44px" }} 
+                value={formData.totalPrice}
+                onChange={(e) => setFormData({...formData, totalPrice: e.target.value, manualPrice: true})}
+                placeholder="0"
+                style={{ width: "100%", fontWeight: "700", color: formData.manualPrice ? "var(--accent)" : "inherit" }} 
               />
+              {formData.manualPrice && (
+                <button 
+                  type="button"
+                  onClick={() => setFormData({...formData, manualPrice: false})}
+                  style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", fontSize: "12px", color: "var(--accent)", cursor: "pointer" }}
+                >
+                  Reset
+                </button>
+              )}
             </div>
           </div>
 
@@ -170,8 +280,8 @@ export default function CreateBooking() {
               gap: "10px"
             }}
           >
-            <Save size={20} />
-            Confirm and Create Booking
+            {loading ? <Loader2 size={20} className="animate-spin" /> : <Save size={20} />}
+            {loading ? "Creating..." : "Confirm and Create Booking"}
           </button>
 
         </form>

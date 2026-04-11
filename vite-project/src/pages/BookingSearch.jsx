@@ -1,23 +1,44 @@
-import React, { useState } from "react";
-import { Search, Phone, User, Calendar, MapPin, MoreVertical } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Search, Phone, User, Calendar, MapPin, MoreVertical, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { api } from "../utils/api";
 
 export default function BookingSearch() {
   const [phone, setPhone] = useState("");
   const [results, setResults] = useState([]);
   const [isSearched, setIsSearched] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
 
-  const mockBookings = [
-    { id: "GO-109283", guest: "Arjun Singh", phone: "9876543210", hotel: "Taj Mahal Palace", checkIn: "2026-03-25", status: "Completed", total: "₹24,500" },
-    { id: "GO-109299", guest: "Arjun Singh", phone: "9876543210", hotel: "Novotel Goa Resort", checkIn: "2026-04-12", status: "Confirmed", total: "₹18,200" },
-    { id: "GO-109310", guest: "Arjun Singh", phone: "9876543210", hotel: "The Leela Ambience", checkIn: "2026-05-02", status: "Confirmed", total: "₹12,400" },
-  ];
-
-  const handleSearch = (e) => {
+  const handleSearch = async (e) => {
     e.preventDefault();
-    const found = mockBookings.filter(b => b.phone.includes(phone) && phone !== "");
-    setResults(found);
-    setIsSearched(true);
+    if (!phone.trim()) return;
+    
+    setIsSearching(true);
+    try {
+      const allBookings = await api.getBookings();
+      const found = allBookings.filter(b => 
+        b.user?.phone?.includes(phone) || 
+        (b.phone && b.phone.includes(phone))
+      );
+      setResults(found);
+      setIsSearched(true);
+    } catch (error) {
+      console.error("Search error:", error);
+      alert("Error searching bookings");
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const getStatusColor = (status) => {
+    if (!status) return 'var(--text-secondary)';
+    switch (status.toLowerCase()) {
+      case 'upcoming':
+      case 'confirmed': return '#10b981';
+      case 'completed': return '#3b82f6';
+      case 'cancelled': return '#ef4444';
+      default: return 'var(--text-secondary)';
+    }
   };
 
   return (
@@ -47,6 +68,7 @@ export default function BookingSearch() {
           </div>
           <button 
             type="submit"
+            disabled={isSearching}
             style={{ 
               background: "var(--accent)", 
               color: "white", 
@@ -55,11 +77,13 @@ export default function BookingSearch() {
               fontWeight: "600",
               display: "flex",
               alignItems: "center",
-              gap: "8px"
+              gap: "8px",
+              opacity: isSearching ? 0.7 : 1,
+              cursor: isSearching ? "not-allowed" : "pointer"
             }}
           >
-            <Search size={18} />
-            Search
+            {isSearching ? <Loader2 size={18} className="animate-spin" /> : <Search size={18} />}
+            {isSearching ? "Searching..." : "Search"}
           </button>
         </form>
       </motion.div>
@@ -77,63 +101,79 @@ export default function BookingSearch() {
             </div>
 
             {results.length > 0 ? (
-              <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
-                  <thead>
-                    <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                      <th style={{ padding: "16px 24px", color: "var(--text-secondary)", fontWeight: "500", fontSize: "14px" }}>Guest</th>
-                      <th style={{ padding: "16px 24px", color: "var(--text-secondary)", fontWeight: "500", fontSize: "14px" }}>Hotel / Property</th>
-                      <th style={{ padding: "16px 24px", color: "var(--text-secondary)", fontWeight: "500", fontSize: "14px" }}>Check-in</th>
-                      <th style={{ padding: "16px 24px", color: "var(--text-secondary)", fontWeight: "500", fontSize: "14px" }}>Status</th>
-                      <th style={{ padding: "16px 24px", color: "var(--text-secondary)", fontWeight: "500", fontSize: "14px" }}>Total</th>
-                      <th style={{ padding: "16px 24px", textAlign: "right" }}></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {results.map((booking) => (
-                      <tr 
-                        key={booking.id} 
-                        style={{ borderBottom: "1px solid var(--border)", transition: "background 0.2s" }}
-                        onMouseOver={(e) => e.currentTarget.style.backgroundColor = "var(--row-hover)"}
-                        onMouseOut={(e) => e.currentTarget.style.backgroundColor = "transparent"}
-                      >
-                        <td style={{ padding: "16px 24px" }}>
-                          <div style={{ fontWeight: "600" }}>{booking.guest}</div>
-                          <div style={{ fontSize: "12px", color: "var(--text-secondary)" }}>{booking.phone}</div>
-                        </td>
-                        <td style={{ padding: "16px 24px" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                            <MapPin size={14} color="var(--text-secondary)" />
-                            {booking.hotel}
-                          </div>
-                        </td>
-                        <td style={{ padding: "16px 24px" }}>{booking.checkIn}</td>
-                        <td style={{ padding: "16px 24px" }}>
-                          <span style={{ 
-                            padding: "4px 10px", 
-                            borderRadius: "20px", 
-                            fontSize: "12px", 
-                            fontWeight: "600",
-                            backgroundColor: booking.status === "Completed" ? "#10b98120" : "#3b82f620",
-                            color: booking.status === "Completed" ? "#10b981" : "#3b82f6",
-                          }}>
-                            {booking.status}
-                          </span>
-                        </td>
-                        <td style={{ padding: "16px 24px", fontWeight: "600" }}>{booking.total}</td>
-                        <td style={{ padding: "16px 24px", textAlign: "right" }}>
-                          <button style={{ background: "transparent", border: "none", color: "var(--text-secondary)" }}>
+              <div style={{ padding: "32px", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: "24px", background: "var(--bg-search)" }}>
+                {results.map((booking) => (
+                  <motion.div
+                    key={booking._id}
+                    layout
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    whileHover={{ y: -5, boxShadow: "0 12px 30px rgba(0,0,0,0.08)" }}
+                    className="glass-card"
+                    style={{ padding: "24px", background: "white", border: "1px solid var(--border)", position: "relative", cursor: "pointer", transition: "all 0.3s" }}
+                  >
+                    <div style={{ position: "absolute", top: "20px", right: "20px" }}>
+                      <span style={{ 
+                        padding: "6px 12px", 
+                        borderRadius: "10px", 
+                        fontSize: "12px", 
+                        fontWeight: "700",
+                        backgroundColor: `${getStatusColor(booking.status)}15`,
+                        color: getStatusColor(booking.status),
+                        border: `1px solid ${getStatusColor(booking.status)}20`
+                      }}>
+                        {booking.status || "Confirmed"}
+                      </span>
+                    </div>
+
+                    <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px" }}>
+                        <div style={{ width: "48px", height: "48px", borderRadius: "14px", background: "var(--accent-light)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--accent)" }}>
+                            <User size={24} />
+                        </div>
+                        <div>
+                            <h4 style={{ fontSize: "16px", fontWeight: "700", color: "var(--text-primary)" }}>{booking.user?.name || "Premium Guest"}</h4>
+                            <p style={{ fontSize: "13px", color: "var(--text-secondary)", fontWeight: "500" }}>{booking.user?.phone || "Private Contact"}</p>
+                        </div>
+                    </div>
+
+                    <div style={{ height: "1px", background: "var(--border)", margin: "0 0 20px" }} />
+
+                    <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                            <MapPin size={16} color="var(--text-secondary)" />
+                            <div>
+                                <p style={{ fontSize: "12px", color: "var(--text-secondary)", fontWeight: "600", textTransform: "uppercase" }}>Property</p>
+                                <p style={{ fontSize: "14px", fontWeight: "700", color: "var(--text-primary)" }}>{booking.hotel?.name || "Grand Palace Hotel"}</p>
+                            </div>
+                        </div>
+
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                            <Calendar size={16} color="var(--text-secondary)" />
+                            <div>
+                                <p style={{ fontSize: "12px", color: "var(--text-secondary)", fontWeight: "600", textTransform: "uppercase" }}>Check-in Date</p>
+                                <p style={{ fontSize: "14px", fontWeight: "700", color: "var(--text-primary)" }}>
+                                    {booking.checkIn ? new Date(booking.checkIn).toLocaleDateString(undefined, { dateStyle: 'medium' }) : "Not Available"}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style={{ marginTop: "24px", padding: "16px", background: "var(--bg-search)", borderRadius: "12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <div>
+                            <p style={{ fontSize: "12px", color: "var(--text-secondary)", fontWeight: "600" }}>TOTAL AMOUNT</p>
+                            <p style={{ fontSize: "18px", fontWeight: "800", color: "var(--accent)" }}>₹{Number(booking.totalPrice || 0).toLocaleString()}</p>
+                        </div>
+                        <button style={{ background: "white", border: "1px solid var(--border)", padding: "8px", borderRadius: "10px", color: "var(--text-secondary)" }}>
                             <MoreVertical size={18} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                        </button>
+                    </div>
+                  </motion.div>
+                ))}
               </div>
             ) : (
               <div style={{ padding: "60px", textAlign: "center", color: "var(--text-secondary)" }}>
-                No bookings found for this phone number. Please try another one.
+                <div style={{ fontSize: "16px", fontWeight: "600", marginBottom: "4px" }}>No results found</div>
+                <p style={{ fontSize: "14px" }}>No bookings found for this phone number. Please try another one.</p>
               </div>
             )}
           </motion.div>

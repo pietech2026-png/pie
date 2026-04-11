@@ -1,37 +1,89 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Search, MoreVertical, Bed, CalendarCheck, Users, TrendingUp } from "lucide-react";
 import { motion } from "framer-motion";
+import { api } from "../utils/api";
 
 export default function Dashboard() {
   const [searchTerm, setSearchTerm] = useState("");
 
-  const bookings = [
-    { id: "GO-109283", guest: "Arjun Singh", roomType: "Premium AC Room", checkIn: "2026-03-30", status: "Confirmed", price: "₹4,250" },
-    { id: "GO-109284", guest: "Sneha Reddy", roomType: "Deluxe Family Suite", checkIn: "2026-03-31", status: "Pending", price: "₹7,899" },
-    { id: "GO-109285", guest: "Vikram Malhotra", roomType: "Standard Non-AC", checkIn: "2026-03-29", status: "Checked-in", price: "₹2,450" },
-    { id: "GO-109286", guest: "Ananya Iyer", roomType: "Luxury Villa", checkIn: "2026-04-02", status: "Confirmed", price: "₹15,400" },
-  ];
+  const [bookings, setBookings] = useState([]);
+  const [hotels, setHotels] = useState([]);
+  const [statsData, setStatsData] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const filteredBookings = bookings.filter((b) =>
-    b.guest.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    b.roomType.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const [bookingsData, hotelsData, adminStats] = await Promise.all([
+          api.getBookings(),
+          api.getHotels(),
+          api.getAdminStats()
+        ]);
+        setBookings(Array.isArray(bookingsData) ? bookingsData : []);
+        setHotels(Array.isArray(hotelsData) ? hotelsData : []);
+        setStatsData(adminStats);
+      } catch (error) {
+        console.error("Failed to fetch dashboard data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  const filteredBookings = bookings.filter((b) => {
+    const guestName = b.user?.name || "Unknown Guest";
+    const hotelName = b.hotel?.name || "Unknown Hotel";
+    return guestName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+           hotelName.toLowerCase().includes(searchTerm.toLowerCase());
+  });
 
   const stats = [
-    { label: "Available Rooms", value: "24 / 40", change: "8 rooms cleaning", icon: <Bed size={20} /> },
-    { label: "Active Bookings", value: "12", change: "+2 from yesterday", icon: <CalendarCheck size={20} /> },
-    { label: "Check-ins Today", value: "5", change: "3 arrived", icon: <Users size={20} /> },
-    { label: "Occupancy Rate", value: "72%", change: "+5.4% this week", icon: <TrendingUp size={20} /> },
+    { 
+      label: "Total Properties", 
+      value: statsData?.totalHotels || 0, 
+      change: "Active across all regions", 
+      icon: <Bed size={20} /> 
+    },
+    { 
+      label: "Total Bookings", 
+      value: statsData?.totalBookings || 0, 
+      change: "Cumulative stay volume", 
+      icon: <CalendarCheck size={20} /> 
+    },
+    { 
+      label: "Total Revenue", 
+      value: `₹${(statsData?.totalRevenue || 0).toLocaleString()}`, 
+      change: "Net earnings from stays", 
+      icon: <TrendingUp size={20} /> 
+    },
+    { 
+      label: "Cancelled Stays", 
+      value: statsData?.cancelledBookings || 0, 
+      change: "Lost booking volume", 
+      icon: <Users size={20} /> 
+    },
   ];
 
   const getStatusColor = (status) => {
+    if (!status) return 'var(--text-secondary)';
     switch (status.toLowerCase()) {
+      case 'upcoming':
       case 'confirmed': return '#10b981';
-      case 'pending': return '#f59e0b';
-      case 'checked-in': return '#3b82f6';
+      case 'completed': return '#3b82f6';
+      case 'cancelled': return '#ef4444';
       default: return 'var(--text-secondary)';
     }
   };
+
+  if (loading) {
+    return (
+      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%", padding: "100px" }}>
+        <p style={{ fontSize: "18px", color: "var(--text-secondary)" }}>Loading Dashboard Data...</p>
+      </div>
+    );
+  }
 
   return (
     <div style={{ maxWidth: "1400px", margin: "0 auto" }}>
@@ -142,7 +194,7 @@ export default function Dashboard() {
             <thead>
               <tr style={{ background: "var(--bg-search)" }}>
                 <th style={{ padding: "16px 32px", color: "var(--text-secondary)", fontWeight: "600", fontSize: "13px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Guest</th>
-                <th style={{ padding: "16px 32px", color: "var(--text-secondary)", fontWeight: "600", fontSize: "13px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Room Type</th>
+                <th style={{ padding: "16px 32px", color: "var(--text-secondary)", fontWeight: "600", fontSize: "13px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Hotel / Property</th>
                 <th style={{ padding: "16px 32px", color: "var(--text-secondary)", fontWeight: "600", fontSize: "13px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Check-in</th>
                 <th style={{ padding: "16px 32px", color: "var(--text-secondary)", fontWeight: "600", fontSize: "13px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Status</th>
                 <th style={{ padding: "16px 32px", color: "var(--text-secondary)", fontWeight: "600", fontSize: "13px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Price</th>
@@ -152,18 +204,18 @@ export default function Dashboard() {
             <tbody>
               {filteredBookings.length > 0 ? (
                 filteredBookings.map((booking) => (
-                  <tr 
-                    key={booking.id} 
+                   <tr 
+                    key={booking._id} 
                     style={{ borderBottom: "1px solid var(--border)", transition: "all 0.2s" }}
                     onMouseOver={(e) => e.currentTarget.style.backgroundColor = "var(--row-hover)"}
                     onMouseOut={(e) => e.currentTarget.style.backgroundColor = "transparent"}
                   >
                     <td style={{ padding: "20px 32px" }}>
-                        <div style={{ fontWeight: "700", color: "var(--text-primary)" }}>{booking.guest}</div>
-                        <div style={{ fontSize: "12px", color: "var(--text-secondary)", marginTop: "2px" }}>{booking.id}</div>
+                        <div style={{ fontWeight: "700", color: "var(--text-primary)" }}>{booking.user?.name || "Guest"}</div>
+                        <div style={{ fontSize: "12px", color: "var(--text-secondary)", marginTop: "2px" }}>{booking._id.slice(-8).toUpperCase()}</div>
                     </td>
-                    <td style={{ padding: "20px 32px", color: "var(--text-secondary)", fontWeight: "500" }}>{booking.roomType}</td>
-                    <td style={{ padding: "20px 32px", color: "var(--text-primary)", fontWeight: "500" }}>{booking.checkIn}</td>
+                    <td style={{ padding: "20px 32px", color: "var(--text-secondary)", fontWeight: "500" }}>{booking.hotel?.name || "N/A"}</td>
+                    <td style={{ padding: "20px 32px", color: "var(--text-primary)", fontWeight: "500" }}>{booking.checkIn ? new Date(booking.checkIn).toLocaleDateString() : "N/A"}</td>
                     <td style={{ padding: "20px 32px" }}>
                       <span style={{ 
                         padding: "6px 12px", 
@@ -174,10 +226,10 @@ export default function Dashboard() {
                         color: getStatusColor(booking.status),
                         border: `1px solid ${getStatusColor(booking.status)}30`
                       }}>
-                        {booking.status}
+                        {booking.status || "Unknown"}
                       </span>
                     </td>
-                    <td style={{ padding: "20px 32px", fontWeight: "700", color: "var(--text-primary)" }}>{booking.price}</td>
+                    <td style={{ padding: "20px 32px", fontWeight: "700", color: "var(--text-primary)" }}>₹{Number(booking.totalPrice || 0).toLocaleString()}</td>
                     <td style={{ padding: "20px 32px", textAlign: "right" }}>
                       <button style={{ background: "var(--bg-search)", border: "none", color: "var(--text-secondary)", padding: "8px", borderRadius: "10px" }}>
                         <MoreVertical size={18} />
@@ -197,7 +249,7 @@ export default function Dashboard() {
           </table>
         </div>
         <div style={{ padding: "20px 32px", borderTop: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <p style={{ fontSize: "14px", color: "var(--text-secondary)" }}>Showing 4 of 48 bookings</p>
+            <p style={{ fontSize: "14px", color: "var(--text-secondary)" }}>Showing {filteredBookings.length} of {bookings.length} bookings</p>
             <div style={{ display: "flex", gap: "8px" }}>
                 <button style={{ padding: "8px 16px", background: "white", border: "1px solid var(--border)", fontSize: "14px", borderRadius: "8px" }}>Previous</button>
                 <button style={{ padding: "8px 16px", background: "white", border: "1px solid var(--border)", fontSize: "14px", borderRadius: "8px" }}>Next</button>

@@ -1,11 +1,16 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
-import { MapPin, Plus, Hotel, Star, ShieldCheck, Heart, Coffee, Plane, Dog, Clock, Sparkles, Save, X, ImagePlus, Navigation } from "lucide-react";
+import { MapPin, Plus, Hotel, Star, ShieldCheck, Heart, Coffee, Plane, Dog, Clock, Sparkles, Save, X, ImagePlus, Navigation, Eye, Bed, Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { api } from "../utils/api";
+import HotelDetail from "./HotelDetail";
+import ManageRooms from "./ManageRooms";
 
 export default function Hotels() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [viewingHotel, setViewingHotel] = useState(null);
+  const [viewingRoomsFor, setViewingRoomsFor] = useState(null);
   const location = useLocation();
   const fileInputRef = useRef(null);
 
@@ -21,57 +26,55 @@ export default function Hotels() {
     nearestLandmark: "",
     tags: [],
     badges: [],
-    image: [] // changed from single image to array
+    image: [], // changed from single image to array
+    description: "",
+    reviews: "",
+    price: "",
+    state: "",
+    pinCode: "",
+    city: ""
   };
+
 
   const [formData, setFormData] = useState(initialFormState);
 
-  const [hotels, setHotels] = useState([
-    {
-      id: "HTL-DL-001",
-      name: "The Leela Ambience",
-      location: "Gurugram",
-      rooms: 250,
-      rating: 4.9,
-      starRating: "5",
-      totalReviews: "2933",
-      landmark: "Near Ambience Mall",
-      nearestLandmark: "Ambience Mall",
-      status: "Active",
-      badges: ["Couple Friendly", "Breakfast Available", "Airport Transfer", "Parking", "Gym"]
-    },
-    {
-      id: "HTL-MU-045",
-      name: "Taj Mahal Palace",
-      location: "Colaba, Mumbai",
-      rooms: 150,
-      rating: 5.0,
-      starRating: "5",
-      totalReviews: "8421",
-      landmark: "Opposite Gateway of India",
-      nearestLandmark: "Gateway of India",
-      status: "Active",
-      badges: ["Couple Friendly", "Flexible Check-in", "Room Upgrade", "Airport Transfer"]
-    },
-    {
-      id: "HTL-GO-088",
-      name: "Novotel Goa Resort",
-      location: "Candolim",
-      rooms: 180,
-      rating: 4.7,
-      starRating: "4",
-      totalReviews: "1250",
-      landmark: "Near Candolim Beach",
-      nearestLandmark: "Candolim Beach",
-      status: "Active",
-      badges: ["Couple Friendly", "Pet Friendly", "Breakfast Available", "Pool Access"]
-    },
-  ]);
+  const [newBadge, setNewBadge] = useState("");
+  const availableEmojis = ["✨", "🏊", "🍸", "❄️", "🔥", "🛏️", "🛀", "📺", "🚗", "🍽️", "🏋️", "💆", "🚭", "🐕", "💼", "🥂", "🚲", "🌐"];
+  const [selectedEmoji, setSelectedEmoji] = useState("✨");
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [customIcons, setCustomIcons] = useState({});
 
-  const badgeOptions = [
+  // 🔥 Streetmap API States
+  const [citySuggestions, setCitySuggestions] = useState([]);
+  const [isCityLoading, setIsCityLoading] = useState(false);
+  const [showCitySuggestions, setShowCitySuggestions] = useState(false);
+  const searchTimeout = useRef(null);
+  const cityInputRef = useRef(null);
+
+  const [hotels, setHotels] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [statusConfirm, setStatusConfirm] = useState(null); 
+
+  const [badgeOptions, setBadgeOptions] = useState([
     "Couple Friendly", "Flexible Check-in", "Room Upgrade",
     "Breakfast Available", "Airport Transfer", "Pet Friendly", "Parking", "Gym"
-  ];
+  ]);
+
+  const fetchHotels = async () => {
+    try {
+      setLoading(true);
+      const data = await api.getHotels();
+      setHotels(data);
+    } catch (error) {
+      console.error("Failed to fetch hotels:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchHotels();
+  }, []);
 
   const isAddRoute = location.pathname === "/hotels/add";
 
@@ -122,8 +125,13 @@ export default function Hotels() {
       nearestLandmark: hotel.nearestLandmark || "",
       tags: hotel.tags || [],
       badges: hotel.badges || [],
-      image: hotel.image || []
+      image: hotel.image || [],
+      price: hotel.price || "",
+      state: hotel.state || "",
+      pinCode: hotel.pinCode || "",
+      city: hotel.city || ""
     });
+
     setEditingId(hotel.id);
     setShowAddForm(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -133,25 +141,94 @@ export default function Hotels() {
     setFormData(initialFormState);
     setEditingId(null);
     setShowAddForm(false);
+    setCitySuggestions([]);
+    setShowCitySuggestions(false);
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (editingId) {
-      setHotels(hotels.map(h => h.id === editingId ? { ...h, ...formData } : h));
+  const handleCityChange = (e) => {
+    const value = e.target.value;
+    setFormData({ ...formData, city: value });
+
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+
+    if (value.length > 2) {
+      searchTimeout.current = setTimeout(() => {
+        fetchCitySuggestions(value);
+      }, 500);
     } else {
-      const newHotel = {
-        ...formData,
-        id: `HTL-NEW-${Math.floor(Math.random() * 1000)}`,
-        rating: parseFloat(formData.rating) || 4.5,
-        status: "Active"
-      };
-      setHotels([newHotel, ...hotels]);
+      setCitySuggestions([]);
+      setShowCitySuggestions(false);
     }
-    handleCancel();
+  };
+
+  const fetchCitySuggestions = async (query) => {
+    setIsCityLoading(true);
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=5&countrycodes=in`
+      );
+      const data = await response.json();
+      setCitySuggestions(data);
+      setShowCitySuggestions(data.length > 0);
+    } catch (error) {
+      console.error("Nominatim API Error:", error);
+    } finally {
+      setIsCityLoading(false);
+    }
+  };
+
+  const selectCitySuggestion = (suggestion) => {
+    const address = suggestion.address;
+    const city = address.city || address.town || address.village || address.suburb || suggestion.display_name.split(',')[0];
+    const state = address.state || "";
+    const pinCode = address.postcode || "";
+    
+    setFormData(prev => ({
+      ...prev,
+      city: city,
+      state: state,
+      pinCode: pinCode,
+      // Optional: Auto-fill location if it's a specific area
+      location: prev.location || suggestion.display_name.split(',')[0]
+    }));
+    
+    setCitySuggestions([]);
+    setShowCitySuggestions(false);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      if (editingId) {
+        const updatedHotel = await api.updateHotel(editingId, formData);
+        setHotels(hotels.map(h => h.id === editingId ? updatedHotel : h));
+      } else {
+        const newHotel = await api.createHotel(formData);
+        setHotels([newHotel, ...hotels]);
+      }
+      handleCancel();
+    } catch (error) {
+      console.error("Failed to save hotel:", error);
+      alert("Error saving hotel: " + error.message);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (window.confirm("Are you sure you want to delete this property? This action cannot be undone.")) {
+      try {
+        await api.deleteHotel(id);
+        setHotels(hotels.filter(h => h.id !== id));
+      } catch (error) {
+        console.error("Failed to delete hotel:", error);
+        alert("Error deleting hotel: " + error.message);
+      }
+    }
   };
 
   const getBadgeIcon = (badge) => {
+    if (customIcons[badge]) {
+        return <span style={{ fontSize: "14px", lineHeight: "1" }}>{customIcons[badge]}</span>;
+    }
     switch (badge) {
       case "Couple Friendly": return <Heart size={14} color="#ef4444" fill="#ef4444" />;
       case "Breakfast Available": return <Coffee size={14} color="var(--accent)" />;
@@ -161,6 +238,14 @@ export default function Hotels() {
       default: return <Sparkles size={14} color="var(--accent)" />;
     }
   };
+
+  if (viewingHotel) {
+    return <HotelDetail hotel={viewingHotel} onBack={() => setViewingHotel(null)} />;
+  }
+
+  if (viewingRoomsFor) {
+    return <ManageRooms hotel={viewingRoomsFor} onBack={() => setViewingRoomsFor(null)} />;
+  }
 
   return (
     <div style={{ maxWidth: "1400px", margin: "0 auto" }}>
@@ -247,6 +332,124 @@ export default function Hotels() {
                 </div>
               </div>
 
+              {/* Property Location / Address */}
+              <div>
+                <p style={{ fontSize: "14px", fontWeight: "700", color: "var(--text-primary)", marginBottom: "10px" }}>Property Address / Landmark</p>
+                <div style={{ position: "relative" }}>
+                  <MapPin size={18} style={{ position: "absolute", left: "16px", top: "50%", transform: "translateY(-50%)", color: "var(--text-secondary)" }} />
+                  <input
+                    type="text"
+                    placeholder="e.g. Near Gateway of India, Colaba"
+                    style={{ width: "100%", paddingLeft: "48px", height: "52px" }}
+                    value={formData.location}
+                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* City — For Filtering */}
+              <div>
+                <p style={{ fontSize: "14px", fontWeight: "700", color: "var(--text-primary)", marginBottom: "4px" }}>Search City (App Link)</p>
+                <p style={{ fontSize: "11px", color: "var(--text-secondary)", marginBottom: "10px" }}>Use suggestions to ensure discoverability in user app.</p>
+                <div style={{ position: "relative" }} ref={cityInputRef}>
+                  <Navigation size={18} style={{ position: "absolute", left: "16px", top: "50%", transform: "translateY(-50%)", color: "var(--text-secondary)" }} />
+                  <input
+                    type="text"
+                    placeholder="Search city e.g. Mumbai"
+                    style={{ width: "100%", paddingLeft: "48px", height: "52px" }}
+                    value={formData.city}
+                    onChange={handleCityChange}
+                    onFocus={() => citySuggestions.length > 0 && setShowCitySuggestions(true)}
+                    required
+                  />
+                  {isCityLoading && (
+                    <div style={{ position: "absolute", right: "16px", top: "50%", transform: "translateY(-50%)" }}>
+                      <div className="spinner-small"></div>
+                    </div>
+                  )}
+
+                  {/* Suggestions Dropdown */}
+                  <AnimatePresence>
+                    {showCitySuggestions && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 5 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 5 }}
+                        style={{
+                          position: "absolute",
+                          top: "100%",
+                          left: 0,
+                          right: 0,
+                          zIndex: 100,
+                          marginTop: "8px",
+                          background: "rgba(255, 255, 255, 0.95)",
+                          backdropFilter: "blur(10px)",
+                          border: "1px solid var(--border)",
+                          borderRadius: "12px",
+                          boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
+                          overflow: "hidden"
+                        }}
+                      >
+                        {citySuggestions.map((item, idx) => (
+                          <div
+                            key={idx}
+                            onClick={() => selectCitySuggestion(item)}
+                            style={{
+                              padding: "12px 16px",
+                              cursor: "pointer",
+                              fontSize: "13px",
+                              borderBottom: idx === citySuggestions.length - 1 ? "none" : "1px solid var(--border)",
+                              transition: "background 0.2s"
+                            }}
+                            onMouseOver={e => e.currentTarget.style.background = "#f8fafc"}
+                            onMouseOut={e => e.currentTarget.style.background = "transparent"}
+                          >
+                            <div style={{ fontWeight: "700", color: "var(--text-primary)" }}>
+                                {item.address.city || item.address.town || item.address.village || item.display_name.split(',')[0]}
+                            </div>
+                            <div style={{ fontSize: "11px", color: "var(--text-secondary)", marginTop: "2px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                {item.display_name}
+                            </div>
+                          </div>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+
+
+              {/* State */}
+              <div>
+                <p style={{ fontSize: "14px", fontWeight: "700", color: "var(--text-primary)", marginBottom: "10px" }}>State</p>
+                <div style={{ position: "relative" }}>
+                  <MapPin size={18} style={{ position: "absolute", left: "16px", top: "50%", transform: "translateY(-50%)", color: "var(--text-secondary)" }} />
+                  <input
+                    type="text"
+                    placeholder="e.g. Maharashtra"
+                    style={{ width: "100%", paddingLeft: "48px", height: "52px" }}
+                    value={formData.state}
+                    onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              {/* Pin Code */}
+              <div>
+                <p style={{ fontSize: "14px", fontWeight: "700", color: "var(--text-primary)", marginBottom: "10px" }}>Pin Code</p>
+                <div style={{ position: "relative" }}>
+                  <MapPin size={18} style={{ position: "absolute", left: "16px", top: "50%", transform: "translateY(-50%)", color: "var(--text-secondary)" }} />
+                  <input
+                    type="text"
+                    placeholder="e.g. 400001"
+                    style={{ width: "100%", paddingLeft: "48px", height: "52px" }}
+                    value={formData.pinCode}
+                    onChange={(e) => setFormData({ ...formData, pinCode: e.target.value })}
+                  />
+                </div>
+              </div>
+
               {/* Star Rating */}
               <div>
                 <p style={{ fontSize: "14px", fontWeight: "700", color: "var(--text-primary)", marginBottom: "10px" }}>Star Rating</p>
@@ -301,7 +504,22 @@ export default function Hotels() {
                 />
               </div>
 
-              {/* Landmark — 50% */}
+              {/* Base Price */}
+              <div>
+                <p style={{ fontSize: "14px", fontWeight: "700", color: "var(--text-primary)", marginBottom: "10px" }}>Base Price (per night)</p>
+                <div style={{ position: "relative" }}>
+                  <span style={{ position: "absolute", left: "16px", top: "50%", transform: "translateY(-50%)", color: "var(--text-secondary)", fontWeight: "700" }}>₹</span>
+                  <input
+                    type="number"
+                    placeholder="e.g. 4500"
+                    style={{ width: "100%", paddingLeft: "32px", height: "52px" }}
+                    value={formData.price}
+                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              {/* Landmark — 33% */}
               <div style={{ gridColumn: "span 1" }}>
                 <p style={{ fontSize: "14px", fontWeight: "700", color: "var(--text-primary)", marginBottom: "10px" }}>Primary Landmark</p>
                 <div style={{ position: "relative" }}>
@@ -316,7 +534,7 @@ export default function Hotels() {
                 </div>
               </div>
 
-              {/* Nearest Landmark — 50% */}
+              {/* Nearest Landmark — 33% */}
               <div style={{ gridColumn: "span 1" }}>
                 <p style={{ fontSize: "14px", fontWeight: "700", color: "var(--text-primary)", marginBottom: "10px" }}>Nearest Transport Hub</p>
                 <div style={{ position: "relative" }}>
@@ -329,6 +547,28 @@ export default function Hotels() {
                     onChange={(e) => setFormData({ ...formData, nearestLandmark: e.target.value })}
                   />
                 </div>
+              </div>
+
+              {/* About The Hotel */}
+              <div style={{ gridColumn: "span 3" }}>
+                <p style={{ fontSize: "14px", fontWeight: "700", color: "var(--text-primary)", marginBottom: "10px" }}>About The Hotel</p>
+                <textarea
+                  placeholder="Describe the hotel's features, history, and unique selling points..."
+                  style={{ width: "100%", padding: "16px", borderRadius: "12px", border: "1.5px solid var(--border)", background: "white", fontSize: "14px", minHeight: "120px", resize: "vertical", outline: "none" }}
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                />
+              </div>
+
+              {/* Reviews Section */}
+              <div style={{ gridColumn: "span 3" }}>
+                <p style={{ fontSize: "14px", fontWeight: "700", color: "var(--text-primary)", marginBottom: "10px" }}>Featured Reviews / Summary</p>
+                <textarea
+                  placeholder="Add featured customer reviews or a summary of guest experiences..."
+                  style={{ width: "100%", padding: "16px", borderRadius: "12px", border: "1.5px solid var(--border)", background: "white", fontSize: "14px", minHeight: "100px", resize: "vertical", outline: "none" }}
+                  value={formData.reviews}
+                  onChange={(e) => setFormData({ ...formData, reviews: e.target.value })}
+                />
               </div>
 
               {/* Hotel Image Upload */}
@@ -483,6 +723,52 @@ export default function Hotels() {
                       {badge}
                     </div>
                   ))}
+                  <div style={{ display: "flex", gap: "8px", gridColumn: "span 2", position: "relative" }}>
+                    <button
+                      type="button"
+                      onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                      style={{ padding: "0 18px", borderRadius: "14px", border: "1.5px solid var(--border)", background: "white", cursor: "pointer", fontSize: "18px", display: "flex", alignItems: "center", justifyContent: "center" }}
+                    >
+                      {selectedEmoji}
+                    </button>
+                    {showEmojiPicker && (
+                      <div style={{ position: "absolute", top: "100%", left: 0, marginTop: "8px", background: "white", border: "1px solid var(--border)", borderRadius: "12px", padding: "12px", display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: "8px", zIndex: 10, boxShadow: "0 10px 25px rgba(0,0,0,0.1)" }}>
+                        {availableEmojis.map(emoji => (
+                          <div
+                            key={emoji}
+                            onClick={() => { setSelectedEmoji(emoji); setShowEmojiPicker(false); }}
+                            style={{ cursor: "pointer", fontSize: "20px", textAlign: "center", padding: "4px", borderRadius: "8px", transition: "background 0.2s" }}
+                            onMouseOver={e => e.currentTarget.style.background = "var(--bg-search)"}
+                            onMouseOut={e => e.currentTarget.style.background = "transparent"}
+                          >
+                            {emoji}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <input 
+                      type="text" 
+                      placeholder="Custom amenity..." 
+                      value={newBadge}
+                      onChange={(e) => setNewBadge(e.target.value)}
+                      style={{ flex: 1, padding: "14px 18px", borderRadius: "14px", border: "1.5px solid var(--border)", fontSize: "14px", background: "white", outline: "none" }}
+                    />
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        const trimmed = newBadge.trim();
+                        if (trimmed && !badgeOptions.includes(trimmed)) {
+                          setBadgeOptions([...badgeOptions, trimmed]);
+                          setFormData(prev => ({ ...prev, badges: [...prev.badges, trimmed] }));
+                          setCustomIcons(prev => ({ ...prev, [trimmed]: selectedEmoji }));
+                          setNewBadge("");
+                        }
+                      }}
+                      style={{ padding: "0 24px", borderRadius: "14px", background: "var(--accent)", color: "white", border: "none", fontWeight: "700", display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}
+                    >
+                      <Plus size={16} /> Add
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -530,13 +816,14 @@ export default function Hotels() {
         <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
             <thead>
-                <tr style={{ background: "white" }}>
-                    <th style={{ padding: "16px 32px", color: "var(--text-secondary)", fontWeight: "600", fontSize: "12px", textTransform: "uppercase" }}>Property ID</th>
-                    <th style={{ padding: "16px 32px", color: "var(--text-secondary)", fontWeight: "600", fontSize: "12px", textTransform: "uppercase" }}>Name & Location</th>
-                    <th style={{ padding: "16px 32px", color: "var(--text-secondary)", fontWeight: "600", fontSize: "12px", textTransform: "uppercase" }}>Capacity</th>
-                    <th style={{ padding: "16px 32px", color: "var(--text-secondary)", fontWeight: "600", fontSize: "12px", textTransform: "uppercase" }}>Rating</th>
-                    <th style={{ padding: "16px 32px", color: "var(--text-secondary)", fontWeight: "600", fontSize: "12px", textTransform: "uppercase" }}>Status</th>
-                    <th style={{ padding: "16px 32px", color: "var(--text-secondary)", fontWeight: "600", fontSize: "12px", textTransform: "uppercase", textAlign: "right" }}>Actions</th>
+                <tr style={{ background: "#f1f5f9" }}>
+                    <th style={{ padding: "14px 20px", color: "var(--text-secondary)", fontWeight: "600", fontSize: "11px", textTransform: "uppercase" }}>ID</th>
+                    <th style={{ padding: "14px 20px", color: "var(--text-secondary)", fontWeight: "600", fontSize: "11px", textTransform: "uppercase" }}>Name & Location</th>
+                    <th style={{ padding: "14px 20px", color: "var(--text-secondary)", fontWeight: "600", fontSize: "11px", textTransform: "uppercase" }}>Rating</th>
+                    <th style={{ padding: "14px 20px", color: "var(--text-secondary)", fontWeight: "600", fontSize: "11px", textTransform: "uppercase" }}>Rooms</th>
+                    <th style={{ padding: "14px 20px", color: "var(--text-secondary)", fontWeight: "600", fontSize: "11px", textTransform: "uppercase" }}>Price</th>
+                    <th style={{ padding: "14px 20px", color: "var(--text-secondary)", fontWeight: "600", fontSize: "11px", textTransform: "uppercase" }}>Status</th>
+                    <th style={{ padding: "14px 20px", color: "var(--text-secondary)", fontWeight: "600", fontSize: "11px", textTransform: "uppercase", textAlign: "right" }}>Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -547,62 +834,135 @@ export default function Hotels() {
                     onMouseOver={e => e.currentTarget.style.backgroundColor = "var(--row-hover)"}
                     onMouseOut={e => e.currentTarget.style.backgroundColor = "transparent"}
                 >
-                    <td style={{ padding: "20px 32px", fontWeight: "600", color: "var(--text-secondary)", fontSize: "14px" }}>{hotel.id}</td>
-                    <td style={{ padding: "20px 32px" }}>
-                        <div style={{ fontWeight: "700", color: "var(--text-primary)", fontSize: "15px" }}>{hotel.name}</div>
-                        <div style={{ fontSize: "13px", color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: "4px", marginTop: "2px" }}>
-                            <MapPin size={12} /> {hotel.location}
+                    <td style={{ padding: "14px 20px", fontWeight: "600", color: "var(--text-secondary)", fontSize: "12px" }}>{hotel.id.slice(-6).toUpperCase()}</td>
+                    <td style={{ padding: "14px 20px" }}>
+                        <div style={{ fontWeight: "700", color: "var(--text-primary)", fontSize: "13px" }}>{hotel.name}</div>
+                        <div style={{ fontSize: "11px", color: "var(--accent)", fontWeight: "700", marginBottom: "4px" }}>{hotel.city}</div>
+                        <div style={{ fontSize: "11px", color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: "4px" }}>
+                            <MapPin size={10} /> {hotel.location}
                         </div>
                     </td>
-                    <td style={{ padding: "20px 32px" }}>
-                        <div style={{ fontWeight: "600", color: "var(--text-primary)" }}>{hotel.rooms} Rooms</div>
-                        <div style={{ fontSize: "12px", color: "var(--text-secondary)" }}>Total Capacity</div>
-                    </td>
-                    <td style={{ padding: "20px 32px" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "4px", marginBottom: "4px" }}>
-                            <Star size={14} fill="#f59e0b" color="#f59e0b" />
-                            <span style={{ fontWeight: "700", color: "var(--text-primary)" }}>{hotel.rating}</span>
+                    <td style={{ padding: "14px 20px" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                            <Star size={12} fill="#f59e0b" color="#f59e0b" />
+                            <span style={{ fontWeight: "700", color: "var(--text-primary)", fontSize: "13px" }}>{hotel.rating}</span>
                         </div>
-                        <div style={{ fontSize: "12px", color: "var(--text-secondary)" }}>{hotel.totalReviews} Reviews</div>
+                        <div style={{ fontSize: "11px", color: "var(--text-secondary)" }}>{hotel.totalReviews} Reviews</div>
                     </td>
-                    <td style={{ padding: "20px 32px" }}>
-                        <span style={{ 
-                            padding: "6px 12px", 
-                            borderRadius: "10px", 
-                            fontSize: "12px", 
-                            fontWeight: "700",
-                            background: "#10b98115",
-                            color: "#10b981",
-                            border: "1px solid #10b98130"
-                        }}>
-                            {hotel.status}
-                        </span>
+                    <td style={{ padding: "14px 20px" }}>
+                        <div style={{ fontWeight: "600", color: "var(--text-primary)", fontSize: "13px" }}>{hotel.roomsCount} Rooms</div>
+                        <div style={{ fontSize: "11px", color: "var(--text-secondary)" }}>Capacity</div>
                     </td>
-                    <td style={{ padding: "20px 32px", textAlign: "right" }}>
+                    <td style={{ padding: "14px 20px" }}>
+                        <div style={{ fontWeight: "800", color: "var(--accent)", fontSize: "14px" }}>₹{hotel.price}</div>
+                        <div style={{ fontSize: "11px", color: "var(--text-secondary)" }}>/ Night</div>
+                    </td>
+                    <td style={{ padding: "14px 20px" }}>
                         <button
-                            onClick={() => handleEdit(hotel)}
+                            onClick={() => {
+                                const newStatus = hotel.status === "Active" ? "Inactive" : "Active";
+                                if (newStatus === "Inactive") {
+                                    setStatusConfirm({ hotelId: hotel.id, newStatus, hotelName: hotel.name });
+                                } else {
+                                    // Turning Active doesn't necessarily need confirmation, but we could add it if needed
+                                    // For now, let's keep it simple as per request for "Active to Inactive"
+                                    (async () => {
+                                        try {
+                                            await api.updateHotel(hotel.id, { status: "Active" });
+                                            fetchHotels();
+                                        } catch (error) {
+                                            alert(error.message);
+                                        }
+                                    })();
+                                }
+                            }}
                             style={{ 
-                                background: "white", 
-                                color: "var(--text-primary)", 
-                                border: "1px solid var(--border)",
+                                padding: "4px 8px", 
                                 borderRadius: "10px", 
-                                padding: "8px 16px", 
-                                fontWeight: "700", 
+                                fontSize: "11px", 
+                                fontWeight: "700",
+                                background: hotel.status === "Inactive" ? "#f1f5f9" : (hotel.isSoldOut ? "#fee2e2" : "#dcfce7"),
+                                color: hotel.status === "Inactive" ? "#64748b" : (hotel.isSoldOut ? "#ef4444" : "#16a34a"),
+                                border: `1px solid ${hotel.status === "Inactive" ? "#e2e8f0" : (hotel.isSoldOut ? "#fecaca" : "#bbf7d0")}`,
                                 cursor: "pointer",
-                                fontSize: "13px",
                                 transition: "all 0.2s"
                             }}
-                            onMouseOver={e => {
-                                e.currentTarget.style.borderColor = "var(--accent)";
-                                e.currentTarget.style.color = "var(--accent)";
-                            }}
-                            onMouseOut={e => {
-                                e.currentTarget.style.borderColor = "var(--border)";
-                                e.currentTarget.style.color = "var(--text-primary)";
-                            }}
                         >
-                            Configure
+                            {hotel.status === "Inactive" ? "Inactive" : "Active"}
                         </button>
+                    </td>
+                    <td style={{ padding: "14px 20px", textAlign: "right" }}>
+                        <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end" }}>
+                            <button
+                                onClick={() => setViewingHotel(hotel)}
+                                style={{ 
+                                    background: "#eff6ff", 
+                                    color: "#3b82f6", 
+                                    border: "1px solid #3b82f630",
+                                    borderRadius: "10px", 
+                                    padding: "6px 10px", 
+                                    fontWeight: "700", 
+                                    cursor: "pointer",
+                                    fontSize: "11px",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "4px"
+                                }}
+                            >
+                                <Eye size={14} /> Preview
+                            </button>
+                            <button
+                                onClick={() => setViewingRoomsFor(hotel)}
+                                style={{ 
+                                    background: "#fdf4ff", 
+                                    color: "#c026d3", 
+                                    border: "1px solid #c026d330",
+                                    borderRadius: "10px", 
+                                    padding: "6px 10px", 
+                                    fontWeight: "700", 
+                                    cursor: "pointer",
+                                    fontSize: "11px",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "4px"
+                                }}
+                            >
+                                <Bed size={14} /> Rooms
+                            </button>
+                            <button
+                                onClick={() => handleEdit(hotel)}
+                                style={{ 
+                                    background: "white", 
+                                    color: "var(--text-primary)", 
+                                    border: "1px solid var(--border)",
+                                    borderRadius: "10px", 
+                                    padding: "6px 12px", 
+                                    fontWeight: "700", 
+                                    cursor: "pointer",
+                                    fontSize: "11px"
+                                }}
+                            >
+                                Configure
+                            </button>
+                            <button
+                                onClick={() => handleDelete(hotel.id)}
+                                style={{ 
+                                    background: "#fee2e2", 
+                                    color: "#ef4444", 
+                                    border: "1px solid #fecaca",
+                                    borderRadius: "10px", 
+                                    padding: "6px 12px", 
+                                    fontWeight: "700", 
+                                    cursor: "pointer",
+                                    fontSize: "11px",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "4px"
+                                }}
+                            >
+                                <Trash2 size={14} /> Remove
+                            </button>
+                        </div>
                     </td>
                 </tr>
                 ))}
@@ -616,6 +976,84 @@ export default function Hotels() {
             </div>
         </div>
       </motion.div>
+
+      <AnimatePresence>
+        {statusConfirm && (
+          <div style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(0,0,0,0.4)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+            backdropFilter: "blur(4px)"
+          }}>
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              style={{
+                background: "white",
+                padding: "24px",
+                borderRadius: "16px",
+                maxWidth: "360px",
+                width: "90%",
+                boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)"
+              }}
+            >
+              <h3 style={{ fontSize: "18px", fontWeight: "800", marginBottom: "12px", color: "var(--text-primary)" }}>Confirm Status Change</h3>
+              <p style={{ fontSize: "14px", color: "var(--text-secondary)", marginBottom: "24px", lineHeight: "1.5" }}>
+                Are you sure you want to inactive <strong>{statusConfirm.hotelName}</strong>? This property will no longer be visible to users.
+              </p>
+              <div style={{ display: "flex", gap: "12px" }}>
+                <button
+                  onClick={() => setStatusConfirm(null)}
+                  style={{
+                    flex: 1,
+                    padding: "10px",
+                    borderRadius: "10px",
+                    border: "1px solid var(--border)",
+                    background: "white",
+                    fontWeight: "600",
+                    cursor: "pointer",
+                    fontSize: "14px"
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    try {
+                      await api.updateHotel(statusConfirm.hotelId, { status: statusConfirm.newStatus });
+                      setStatusConfirm(null);
+                      fetchHotels();
+                    } catch (error) {
+                      alert(error.message);
+                    }
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: "10px",
+                    borderRadius: "10px",
+                    border: "none",
+                    background: "#ef4444",
+                    color: "white",
+                    fontWeight: "600",
+                    cursor: "pointer",
+                    fontSize: "14px"
+                  }}
+                >
+                  Yes
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
